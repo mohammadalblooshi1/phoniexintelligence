@@ -23,7 +23,7 @@ export function AgentTeamChat({ agents }: { agents: AgentCard[] }) {
   async function ask(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (text.length < 2 || busy) return;
+    if (text.length < 1 || busy) return;
     setError(null);
     setInput("");
     const history = messages.slice(-8);
@@ -100,7 +100,7 @@ export function AgentTeamChat({ agents }: { agents: AgentCard[] }) {
             aria-label={`Message the ${agent.name}`}
             dir="auto"
           />
-          <button className="btn-primary" disabled={busy || input.trim().length < 2}>Ask</button>
+          <button className="btn-primary" disabled={busy || input.trim().length < 1}>Ask</button>
         </form>
       </div>
     </div>

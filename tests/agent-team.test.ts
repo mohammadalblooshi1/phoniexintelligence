@@ -7,7 +7,7 @@ delete process.env.ANTHROPIC_API_KEY;
 delete process.env.AI_GATEWAY_API_KEY;
 
 test("six agents, each with a role, tasks and prepared answers", () => {
-  assert.deepEqual(AGENT_TEAM.map((a) => a.key), ["intake", "research", "scheduling", "proposal", "success", "analyst"]);
+  assert.deepEqual(AGENT_TEAM.map((a) => a.key), ["scheduling", "intake", "research", "proposal", "success", "analyst"]);
   for (const a of AGENT_TEAM) {
     assert.ok(a.role && a.does.length >= 3 && a.conversation.length >= 2 && a.arabic, a.key);
   }
@@ -48,5 +48,5 @@ test("every prepared question returns its own answer", async () => {
       assert.equal(offlineAnswer(a, qa.q), qa.a, `${a.key}/common: ${qa.q}`);
     }
   }
-  assert.match(offlineAnswer(AGENT_TEAM[2], "من أنت؟"), /^أنا وكيل المواعيد/);
+  assert.match(offlineAnswer(AGENT_TEAM.find((a) => a.key === "scheduling")!, "من أنت؟"), /^أنا وكيل المواعيد/);
 });

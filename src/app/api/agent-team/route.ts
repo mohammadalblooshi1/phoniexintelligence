@@ -2,8 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { anthropic, modelFor } from "@/lib/ai";
 import { agentByKey, offlineAnswer } from "@/lib/agent-team-answer";
-import { ASK_YESNO_AR, ASK_YESNO_EN, bookingStep, noReply, yesReply } from "@/lib/scheduling-chat";
-import { applyAnswer, bookingLink, createPartnerLead, latestLeadByEmail } from "@/lib/partners";
+import { ASK_TYPE_AR, ASK_TYPE_EN, ASK_YESNO_AR, ASK_YESNO_EN, bookingStep, changeReply, lateReply, noReply, yesReply } from "@/lib/scheduling-chat";
+import { applyAnswer, bookingLink, createPartnerLead, latestLeadByEmail, partnerNote } from "@/lib/partners";
 
 // Public chat with the six partnership agents on the AI Agents page.
 // Uses Claude when connected; otherwise the closest prepared answer.
@@ -11,7 +11,7 @@ import { applyAnswer, bookingLink, createPartnerLead, latestLeadByEmail } from "
 
 const Body = z.object({
   agent: z.string().max(20),
-  message: z.string().trim().min(2).max(500),
+  message: z.string().trim().min(1).max(500),
   history: z
     .array(
       z.object({
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
     return Response.json(
-      { error: "Please write a question (2–500 characters)." },
+      { error: "Please write a question (up to 500 characters)." },
       { status: 400 },
     );
   const agent = agentByKey(parsed.data.agent);
@@ -91,7 +91,18 @@ export async function POST(request: Request) {
         latestLeadByEmail(step.email) ??
         (await createPartnerLead({ name: step.name, email: step.email, message: "Via the Scheduling Agent chat" }, new Date(), { confirmEmail: false })).lead;
       await applyAnswer(lead.id, step.intent, "chat", parsed.data.message);
-      return Response.json({ answer: step.intent === "yes" ? yesReply(lead.name, bookingLink(lead), ar) : noReply(lead.name, ar) });
+      return Response.json({ answer: step.intent === "yes" ? (ar ? ASK_TYPE_AR : ASK_TYPE_EN) : noReply(lead.name, ar) });
+    }
+    if (step.kind === "link") {
+      const lead = latestLeadByEmail(step.email) ?? (await createPartnerLead({ name: step.name, email: step.email, message: "Via the Scheduling Agent chat" }, new Date(), { confirmEmail: false })).lead;
+      await partnerNote(lead.id, "Meeting details", `Meeting type: ${step.meetingType}\nCompany and goal: ${step.about || "-"}`);
+      return Response.json({ answer: yesReply(lead.name, bookingLink(lead), ar, step.meetingType) });
+    }
+    if (step.kind === "late" || step.kind === "change") {
+      const lead = step.email ? latestLeadByEmail(step.email) : null;
+      if (lead) await partnerNote(lead.id, step.kind === "late" ? "Running late" : "Wants to reschedule or cancel", parsed.data.message);
+      if (step.kind === "late") return Response.json({ answer: lateReply(Boolean(lead), ar) });
+      return Response.json({ answer: changeReply(lead ? bookingLink(lead) : null, ar) });
     }
   }
 

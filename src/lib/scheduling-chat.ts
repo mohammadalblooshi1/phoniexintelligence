@@ -14,6 +14,21 @@ export const ASK_EMAIL_AR = "شكراً! ما بريدك الإلكتروني؟ 
 export const ASK_YESNO_EN = "Would you like to book a partnership meeting with PHONIEX? Please reply YES or NO.";
 export const ASK_YESNO_AR = "هل ترغب في حجز اجتماع شراكة مع PHONIEX؟ يرجى الرد بـ نعم أو لا.";
 
+export const ASK_TYPE_EN = "Great! Which meeting would you like? Reply 1, 2 or 3:\n1. Online video call (30 min)\n2. Visit at the PHONIEX office (45 min)\n3. Property site visit (60 min)";
+export const ASK_TYPE_AR = "رائع! ما نوع الاجتماع الذي تفضّله؟ رد بـ 1 أو 2 أو 3:\n1. مكالمة فيديو (30 دقيقة)\n2. زيارة مكتب PHONIEX (45 دقيقة)\n3. زيارة موقع العقار (60 دقيقة)";
+export const ASK_ABOUT_EN = "Last question: what's your company, and what's your main goal for the meeting? (Or type skip.)";
+export const ASK_ABOUT_AR = "سؤال أخير: ما اسم شركتك، وما هدفك الرئيسي من الاجتماع؟ (أو اكتب تخطي)";
+
+export const MEETING_TYPES = [
+  { en: "Online video call (30 min)", ar: "مكالمة فيديو (30 دقيقة)", re: /^\s*1\b|online|video|zoom|teams|call|أونلاين|اونلاين|فيديو|مكالمة|عن بعد/i },
+  { en: "Visit at the PHONIEX office (45 min)", ar: "زيارة مكتب PHONIEX (45 دقيقة)", re: /^\s*2\b|office|in person|visit you|مكتب|حضوري/i },
+  { en: "Property site visit (60 min)", ar: "زيارة موقع العقار (60 دقيقة)", re: /^\s*3\b|site|property|villa|apartment|موقع|عقار|فيلا|شقة/i },
+];
+
+const LATE = /\b(running late|i'?m late|will be late|be late|delayed|stuck in traffic|traffic)\b|متأخر|سأتأخر|تأخرت|زحمة/i;
+const CHANGE = /\b(reschedule|re-schedule|move (my|the) (meeting|call|appointment)|change (my|the) (meeting|time|appointment)|another time|cancel)\b|إلغاء|الغاء|تأجيل|تغيير (الموعد|الوقت)|موعد آخر/i;
+const SKIP = /^\s*(skip|no|none|later|-|n\/a|تخطي|لا|لاحقا|لاحقاً)\s*[.!]*\s*$/i;
+
 const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 const BOOK_INTENT = /\b(book|schedule|arrange|set ?up|reserve|request)\b.*\b(meeting|call|appointment|slot|demo|time)\b|\b(book|booking|appointment)\b|\b(like|want|wanna) to (meet|partner|talk)|احجز|حجز|موعد|أريد (اجتماع|مقابلة)|اريد (اجتماع|مقابلة)/i;
 const FILLER = /\b(my|name|is|i am|i'm|im|this is|full|email|e-mail|mail|address|and|here|it's|its|hi|hello|thanks|thank you)\b|اسمي|الاسم|إيميلي|ايميلي|بريدي|البريد|الإلكتروني|الالكتروني|و?مرحبا|شكرا/gi;
@@ -23,7 +38,9 @@ export type BookingStep =
   | { kind: "none" }
   | { kind: "ask"; text: string }
   | { kind: "book"; name: string; email: string }
-  | { kind: "answer"; intent: "yes" | "no"; name: string; email: string };
+  | { kind: "answer"; intent: "yes" | "no"; name: string; email: string }
+  | { kind: "link"; name: string; email: string; meetingType: string; about: string }
+  | { kind: "late" | "change"; email: string | null };
 
 const arabic = (s: string) => /[؀-ۿ]/.test(s);
 
@@ -61,6 +78,28 @@ export function bookingStep(message: string, history: Msg[]): BookingStep {
   const email = message.match(EMAIL)?.[0];
   const earlierUser = history.filter((m) => m.role === "user").map((m) => m.content);
 
+  const ends = (...t: string[]) => Boolean(last && t.some((x) => last.content.endsWith(x)));
+
+  // Step 3: meeting type.
+  if (ends(ASK_TYPE_EN, ASK_TYPE_AR)) {
+    const type = MEETING_TYPES.find((t) => t.re.test(message));
+    return { kind: "ask", text: type ? (ar ? ASK_ABOUT_AR : ASK_ABOUT_EN) : ar ? ASK_TYPE_AR : ASK_TYPE_EN };
+  }
+  // Step 4: company and goal, then the booking link.
+  if (ends(ASK_ABOUT_EN, ASK_ABOUT_AR)) {
+    const details = detailsFrom(history);
+    const typeIdx = history.findLastIndex((m) => m.role === "assistant" && (m.content.endsWith(ASK_TYPE_EN) || m.content.endsWith(ASK_TYPE_AR)));
+    const typeMsg = history[typeIdx + 1]?.content ?? "";
+    const type = MEETING_TYPES.find((t) => t.re.test(typeMsg)) ?? MEETING_TYPES[0];
+    if (details) return { kind: "link", ...details, meetingType: type.en, about: SKIP.test(message) ? "" : message.slice(0, 500) };
+  }
+
+  // Any time: running late, or wants to move / cancel a meeting.
+  if (LATE.test(message) || CHANGE.test(message)) {
+    const known = detailsFrom(history)?.email ?? email?.toLowerCase() ?? null;
+    return { kind: LATE.test(message) ? "late" : "change", email: known };
+  }
+
   // Step 2: the visitor answers YES or NO right here in the chat.
   if (last && (last.content.endsWith(ASK_YESNO_EN) || last.content.endsWith(ASK_YESNO_AR))) {
     const details = detailsFrom(history);
@@ -93,11 +132,25 @@ export function bookingStep(message: string, history: Msg[]): BookingStep {
   return { kind: "none" };
 }
 
-export function yesReply(name: string, link: string, ar: boolean) {
+export function yesReply(name: string, link: string, ar: boolean, meetingType?: string) {
   const first = name.split(" ")[0];
+  const type = MEETING_TYPES.find((t) => t.en === meetingType);
   return ar
-    ? `رائع يا ${first}! اختر الوقت المناسب لك من هنا:\n${link}\n\nستصلك دعوة التقويم مع رابط الاجتماع فور الحجز، وبعد الاجتماع ستصلك رسالة شكر.`
-    : `Great, ${first}! Pick a time that suits you here:\n${link}\n\nYou'll get the calendar invitation with the meeting link as soon as you book, and a thank-you letter after the meeting.`;
+    ? `شكراً يا ${first}!${type ? ` نوع الاجتماع: ${type.ar}.` : ""} اختر الوقت المناسب لك من هنا (الأوقات تظهر بتوقيتك المحلي):\n${link}\n\nستصلك دعوة التقويم فور الحجز، وتذكير قبل الموعد، ورسالة شكر بعد الاجتماع. إذا احتجت لتغيير الموعد أو ستتأخر، أخبرني هنا.`
+    : `Thank you, ${first}!${type ? ` Meeting type: ${type.en}.` : ""} Pick a time that suits you here (times show in your own time zone):\n${link}\n\nYou'll get the calendar invitation as soon as you book, a reminder before the meeting, and a thank-you letter afterwards. If you need to move the meeting or you're running late, just tell me here.`;
+}
+
+export function lateReply(known: boolean, ar: boolean) {
+  if (!known) return ar ? "لا مشكلة. ما بريدك الإلكتروني حتى أبلغ الفريق؟" : "No problem. What's the email you booked with, so I can tell the team?";
+  return ar ? "لا مشكلة، أبلغت الفريق بأنك ستتأخر قليلاً وسينتظرونك. قُد بأمان!" : "No problem. I've let the team know you're running a little late, and they'll wait for you. Drive safely!";
+}
+
+export function changeReply(link: string | null, ar: boolean) {
+  const base = ar
+    ? "يمكنك تغيير الموعد أو إلغاؤه من رابطي «Reschedule» أو «Cancel» في رسالة دعوة التقويم."
+    : "You can move or cancel your meeting with the Reschedule or Cancel link in your calendar invitation email.";
+  if (!link) return `${base} ${ar ? "أو أرسل لي بريدك الإلكتروني وسأبلغ الفريق." : "Or send me the email you booked with and I'll tell the team."}`;
+  return `${base}\n\n${ar ? "أو اختر وقتاً جديداً من هنا، وقد أبلغت الفريق:" : "Or pick a new time here. I've let the team know:"}\n${link}`;
 }
 
 export function noReply(name: string, ar: boolean) {

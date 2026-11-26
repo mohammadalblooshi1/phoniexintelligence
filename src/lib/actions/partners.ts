@@ -57,6 +57,13 @@ export async function answerFromLinkAction(formData: FormData) {
   redirect(`/partners/r/${encodeURIComponent(token)}?done=1`);
 }
 
+/** The partner tapped a 1–5 rating on the page linked from the thank-you letter. */
+export async function rateMeetingAction(formData: FormData) {
+  const token = String(formData.get("token") ?? "");
+  await P.rateMeeting(token, Number(formData.get("rating")));
+  redirect(`/partners/rate/${encodeURIComponent(token)}?done=1`);
+}
+
 async function requireAdmin() {
   const user = await requireUser();
   if (user.is_platform_admin !== 1) redirect("/app");

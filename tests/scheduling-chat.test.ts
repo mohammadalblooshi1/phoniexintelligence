@@ -41,3 +41,27 @@ test("YES / NO is answered right in the chat, using the details given earlier", 
   assert.equal(bookingStep("نعم", h).kind, "answer");
   assert.deepEqual(bookingStep("maybe later?", h), { kind: "ask", text: ASK_YESNO_EN });
 });
+
+test("after YES: meeting type, then company and goal, then the link", async () => {
+  const S = await import("../src/lib/scheduling-chat");
+  const h = [
+    { role: "user" as const, content: "Omar Saleh omar@x.ae" },
+    { role: "assistant" as const, content: `Thanks, Omar. ${S.ASK_YESNO_EN}` },
+    { role: "user" as const, content: "yes" },
+    { role: "assistant" as const, content: S.ASK_TYPE_EN },
+  ];
+  assert.deepEqual(bookingStep("2", h), { kind: "ask", text: S.ASK_ABOUT_EN });
+  assert.deepEqual(bookingStep("hmm", h), { kind: "ask", text: S.ASK_TYPE_EN });
+  const h2 = [...h, { role: "user" as const, content: "site visit please" }, { role: "assistant" as const, content: S.ASK_ABOUT_EN }];
+  assert.deepEqual(bookingStep("Saleh Homes, 3D tours for 20 villas", h2), {
+    kind: "link", name: "Omar Saleh", email: "omar@x.ae", meetingType: "Property site visit (60 min)", about: "Saleh Homes, 3D tours for 20 villas",
+  });
+  assert.equal((bookingStep("skip", h2) as { about: string }).about, "");
+});
+
+test("running late and reschedule requests are recognised", () => {
+  const h = [{ role: "user" as const, content: "Omar Saleh omar@x.ae" }];
+  assert.deepEqual(bookingStep("I'm running late, sorry", h), { kind: "late", email: "omar@x.ae" });
+  assert.deepEqual(bookingStep("Can I reschedule my meeting?", []), { kind: "change", email: null });
+  assert.equal(bookingStep("أريد تأجيل الموعد", []).kind, "change");
+});

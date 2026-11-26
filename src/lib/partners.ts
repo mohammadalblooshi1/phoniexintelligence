@@ -110,7 +110,7 @@ const emails = {
   }),
   afterMeeting: (l: PartnerLead) => ({
     subject: "Thank you for meeting with PHONIEX",
-    text: `Hi ${l.name},\n\nThank you for taking the time to meet with us${l.company ? ` and for sharing more about ${l.company}` : ""}.\n\nWe enjoyed the conversation and will follow up with the next steps we discussed. If anything comes to mind in the meantime, just reply to this email.\n\nشكراً لوقتك، ونتطلع إلى العمل معاً.${sign}`,
+    text: `Hi ${l.name},\n\nThank you for taking the time to meet with us${l.company ? ` and for sharing more about ${l.company}` : ""}.\n\nWe enjoyed the conversation and will follow up with the next steps we discussed. If anything comes to mind in the meantime, just reply to this email.\n\nHow was the meeting? Rate it from 1 to 5 here (one tap): ${env.siteUrl()}/partners/rate/${l.token}\n\nشكراً لوقتك، ونتطلع إلى العمل معاً.${sign}`,
   }),
 };
 
@@ -365,4 +365,23 @@ export async function thankCalendlyMeetings(now = new Date()) {
     console.error("[partners] Calendly check failed", err);
   }
   return sent;
+}
+
+/** Records something a partner told the Scheduling Agent and tells the owner by email. */
+export async function partnerNote(leadId: string, title: string, detail: string) {
+  const lead = get(leadId);
+  if (!lead) return;
+  log(leadId, "note", `${title}: ${detail}`.slice(0, 1000));
+  await sendEmail({ to: env.salesInbox(), subject: `${title}: ${lead.name}`, text: `${lead.name} <${lead.email}>\n\n${detail}`, replyTo: lead.email });
+}
+
+/** The partner rated the meeting (1–5) from the thank-you letter. */
+export async function rateMeeting(token: string, rating: number) {
+  const lead = leadByToken(token);
+  if (!lead || !Number.isInteger(rating) || rating < 1 || rating > 5) return null;
+  const already = db().prepare("select 1 from partner_events where lead_id = ? and type = 'rating'").get(lead.id);
+  if (already) return lead;
+  log(lead.id, "rating", String(rating));
+  await sendEmail({ to: env.salesInbox(), subject: `Meeting rating ${rating}/5 from ${lead.name}`, text: `${lead.name} <${lead.email}> rated the meeting ${rating} out of 5.`, replyTo: lead.email });
+  return lead;
 }

@@ -416,3 +416,6 @@ export const COMMON_ANSWERS: QA[] = [
 
 // Add the extra prepared answers to each agent.
 for (const agent of AGENT_TEAM) agent.conversation.push(...(EXTRA_ANSWERS[agent.key] ?? []));
+
+// The Scheduling Agent is shown first on the AI Agents page.
+AGENT_TEAM.sort((a, b) => Number(b.key === "scheduling") - Number(a.key === "scheduling"));
