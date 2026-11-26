@@ -1,0 +1,41 @@
+{
+  "name": "phoniex",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "DATABASE_PATH=:memory: UPLOADS_DIR=${TMPDIR:-/tmp}/phoniex-test-uploads tsx --conditions=react-server --test tests/*.test.ts",
+    "make-admin": "tsx --conditions=react-server scripts/make-admin.ts",
+    "postinstall": "node scripts/copy-vendor-assets.mjs",
+    "prebuild": "node scripts/copy-vendor-assets.mjs",
+    "predev": "node scripts/copy-vendor-assets.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.14.0",
+    "maplibre-gl": "^6.19.0",
+    "next": "16.4.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "server-only": "^0.0.1",
+    "three": "^0.187.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "4.3.3",
+    "@types/node": "^22.20.7",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "^0.187.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "tailwindcss": "4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

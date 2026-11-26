@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  --bg: #f7f8fb;
+  --surface: #ffffff;
+  --surface-2: #eef1f6;
+  --border: #dde2ea;
+  --fg: #0f1a2e;
+  --muted: #5a6478;
+  --accent: #e8590c;
+  --accent-fg: #ffffff;
+  --accent-soft: #fff1e8;
+  --navy: #152a4a;
+  --ok: #1f8a4c;
+  --warn: #b26a00;
+  --danger: #c0392b;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #0b1220;
+  --surface: #111a2c;
+  --surface-2: #17223a;
+  --border: #25324d;
+  --fg: #e8edf6;
+  --muted: #9aa6bd;
+  --accent: #ff7a2f;
+  --accent-fg: #1a0d03;
+  --accent-soft: #2a1a10;
+  --navy: #c9d7f0;
+  --ok: #4cc283;
+  --warn: #e0a040;
+  --danger: #ef6b5d;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-navy: var(--navy);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+@utility btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent;
+  }
+
+@utility btn-primary {
+    @apply btn bg-accent text-accent-fg hover:brightness-110;
+  }
+
+@utility btn-secondary {
+    @apply btn border border-border bg-surface text-fg hover:bg-surface-2;
+  }
+
+@utility btn-ghost {
+    @apply btn text-muted hover:text-fg hover:bg-surface-2;
+  }
+
+@utility card {
+    @apply rounded-xl border border-border bg-surface p-5;
+  }
+
+@utility input {
+    @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-muted focus:outline-2 focus:outline-accent;
+  }
+
+@utility label {
+    @apply mb-1 block text-sm font-medium text-fg;
+  }
+
+@utility badge {
+    @apply inline-flex items-center rounded-full border border-border bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted;
+  }
+
+@utility container-page {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
