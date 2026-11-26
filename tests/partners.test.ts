@@ -31,8 +31,8 @@ test("form → confirmation email with YES/NO, team notified, no duplicate withi
   assert.equal(lead.status, "awaiting_reply");
   const m = mails("aisha@dev.test");
   assert.equal(m.length, 1);
-  assert.match(m[0].body, /reply to this email with YES/);
-  assert.match(m[0].body, new RegExp(`/partners/r/${lead.token}\\?a=yes`));
+  assert.match(m[0].body, /Tap YES to receive a booking link/);
+  assert.ok(m[0].body.includes(`/partners/r/${lead.token}?a=yes`));
   assert.equal(mails("team@phoniex.test").filter((x) => x.subject.includes("Aisha")).length, 1);
   const again = await P.createPartnerLead({ name: "Aisha", email: "aisha@dev.test" }, later(2));
   assert.equal(again.duplicate, true);
@@ -128,4 +128,34 @@ test("inbound email and cron endpoints require their secrets", async () => {
   assert.equal(res.status, 200);
   assert.equal(status(lead.id), "interested");
   assert.equal((await cron.GET(new Request("http://x", { headers: { authorization: "Bearer cron_secret" } }))).status, 200);
+});
+
+test("YES link still works when the stored request is gone (another server or a redeploy)", async () => {
+  const { lead } = await P.createPartnerLead({ name: "Maryam Saeed", email: "maryam@devco.test", company: "DevCo" }, new Date());
+  assert.ok(lead.token.includes("."), "signed link token");
+  db().prepare("delete from partner_leads where email = ?").run("maryam@devco.test");   // simulate a fresh server
+  const restored = P.leadByToken(lead.token);
+  assert.ok(restored, "rebuilt from the link");
+  assert.equal(restored!.name, "Maryam Saeed");
+  await P.applyAnswer(restored!.id, "yes", "link");
+  const booking = mails("maryam@devco.test").at(-1)!;
+  assert.match(booking.subject, /Book your PHONIEX partnership meeting/);
+  assert.match(booking.body, /name=Maryam\+Saeed&email=maryam%40devco\.test/);
+});
+
+test("forged, tampered or expired links are refused", () => {
+  const good = P.makeLinkToken({ name: "A", email: "a@x.test", company: "" });
+  const [data] = good.split(".");
+  const forged = Buffer.from(JSON.stringify({ n: "Evil", e: "victim@x.test", c: "", t: Math.floor(Date.now() / 1000) })).toString("base64url");
+  assert.equal(P.leadByToken(`${forged}.${good.split(".")[1]}`), null, "tampered data");
+  assert.equal(P.leadByToken(`${data}.AAAA`), null, "bad signature");
+  const old = P.makeLinkToken({ name: "A", email: "a@x.test", company: "" }, new Date(Date.now() - 40 * 86400_000));
+  assert.equal(P.readLinkToken(old), null, "expired after 30 days");
+});
+
+test("email wording asks to tap YES until email replies are set up", async () => {
+  delete process.env.PARTNER_REPLY_TO;
+  delete process.env.INBOUND_EMAIL_SECRET;
+  await P.createPartnerLead({ name: "Tariq", email: "tariq@x.test" }, new Date());
+  assert.match(mails("tariq@x.test")[0].body, /Tap YES to receive a booking link/);
 });

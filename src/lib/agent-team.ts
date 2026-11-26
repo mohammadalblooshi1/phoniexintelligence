@@ -68,7 +68,7 @@ export const AGENT_TEAM: TeamAgent[] = [
       },
       {
         q: "A new request just came in from Khalid, a property developer in Sharjah with two projects launching next year. How should we treat it?",
-        a: "Priority: 🔥 hot. Partner type: property developer. Two upcoming launches make 3D tours, floor plans and the listing agent a strong fit. I've sent the confirmation email in Arabic and English and flagged it to you as a priority meeting.",
+        a: "Priority: high. Partner type: property developer. Two upcoming launches make 3D tours, floor plans and the listing agent a strong fit. I've sent the confirmation email in Arabic and English and flagged it to you as a priority meeting.",
       },
       {
         q: "And the request from a café owner in Ajman who only wrote “interested”?",

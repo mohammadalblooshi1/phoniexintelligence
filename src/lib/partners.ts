@@ -1,5 +1,5 @@
 import "server-only";
-import { randomBytes } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { db, newId, nowIso } from "@/lib/db";
@@ -39,6 +39,43 @@ function update(id: string, fields: Partial<PartnerLead>) {
 // ---------------------------------------------------------------- emails
 
 const replyTo = () => process.env.PARTNER_REPLY_TO || undefined;
+/** Partners can answer by replying to the email only when inbound email is set up. */
+const repliesEnabled = () => Boolean(process.env.PARTNER_REPLY_TO && process.env.INBOUND_EMAIL_SECRET);
+
+// ---------------------------------------------------------------- signed links
+// The YES / NO links carry the partner's details, signed so they can't be forged.
+// They keep working on any server and after redeploys, even if the stored request is gone.
+
+const LINK_TTL_DAYS = 30;
+function linkSecret() {
+  const s = process.env.PARTNER_LINK_SECRET || process.env.CRON_SECRET;
+  if (s) return s;
+  if (process.env.NODE_ENV === "production") throw new Error("Set PARTNER_LINK_SECRET or CRON_SECRET");
+  return "phoniex-local-dev-link-secret";
+}
+const b64 = (s: string) => Buffer.from(s).toString("base64url");
+const sig = (data: string) => createHmac("sha256", linkSecret()).update(data).digest("base64url");
+
+type LinkPayload = { n: string; e: string; c: string; t: number };
+export function makeLinkToken(lead: Pick<PartnerLead, "name" | "email" | "company">, now = new Date()) {
+  const data = b64(JSON.stringify({ n: lead.name, e: lead.email, c: lead.company, t: Math.floor(now.getTime() / 1000) } satisfies LinkPayload));
+  return `${data}.${sig(data)}`;
+}
+export function readLinkToken(token: string, now = new Date()): LinkPayload | null {
+  const [data, mac] = token.split(".");
+  if (!data || !mac || token.length > 1200) return null;
+  const expected = Buffer.from(sig(data));
+  const given = Buffer.from(mac);
+  if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
+  try {
+    const p = JSON.parse(Buffer.from(data, "base64url").toString()) as LinkPayload;
+    if (typeof p.n !== "string" || typeof p.e !== "string" || typeof p.t !== "number") return null;
+    if (now.getTime() / 1000 - p.t > LINK_TTL_DAYS * 86400) return null;
+    return { n: p.n.slice(0, 120), e: p.e.slice(0, 200).toLowerCase(), c: String(p.c ?? "").slice(0, 160), t: p.t };
+  } catch {
+    return null;
+  }
+}
 const answerLink = (lead: PartnerLead, a: "yes" | "no") => `${env.siteUrl()}/partners/r/${lead.token}?a=${a}`;
 export function bookingLink(lead: Pick<PartnerLead, "name" | "email">) {
   const url = new URL(env.calendlyUrl());
@@ -51,11 +88,11 @@ const sign = "\n\nBest regards,\nPHONIEX Partnerships\nPHONIEX Intelligence · U
 const emails = {
   confirm: (l: PartnerLead) => ({
     subject: "PHONIEX partnership — would you like to meet?",
-    text: `Hi ${l.name},\n\nThank you for your interest in partnering with PHONIEX.\n\nWould you like to book a short meeting with our partnerships team?\n\nJust reply to this email with YES to receive a booking link, or NO if now is not the right time.\n\nOr click:\nYES, book a meeting: ${answerLink(l, "yes")}\nNO, not now: ${answerLink(l, "no")}\n\nللتأكيد، رد على هذه الرسالة بكلمة "نعم" أو "لا".${sign}`,
+    text: `Hi ${l.name},\n\nThank you for your interest in partnering with PHONIEX.\n\nWould you like to book a short meeting with our partnerships team?\n\n${repliesEnabled() ? "Just reply to this email with YES to receive a booking link, or NO if now is not the right time. Or tap:" : "Tap YES to receive a booking link, or NO if now is not the right time:"}\nYES, book a meeting: ${answerLink(l, "yes")}\nNO, not now: ${answerLink(l, "no")}\n\n${repliesEnabled() ? 'للتأكيد، رد على هذه الرسالة بكلمة "نعم" أو "لا".' : 'للتأكيد، اضغط على رابط "YES" (نعم) أو "NO" (لا) أعلاه.'}${sign}`,
   }),
   followUp: (l: PartnerLead) => ({
     subject: "Following up: your PHONIEX partnership meeting",
-    text: `Hi ${l.name},\n\nWe wanted to follow up on our message from yesterday about a partnership meeting with PHONIEX.\n\nReply YES and we'll send you a booking link, or NO if you'd prefer not to meet right now.\n\nYES: ${answerLink(l, "yes")}\nNO: ${answerLink(l, "no")}\n\nرد بكلمة "نعم" أو "لا".${sign}`,
+    text: `Hi ${l.name},\n\nWe wanted to follow up on our message from yesterday about a partnership meeting with PHONIEX.\n\n${repliesEnabled() ? "Reply YES and we'll send you a booking link, or NO if you'd prefer not to meet right now. Or tap:" : "Tap YES and we'll send you a booking link, or NO if you'd prefer not to meet right now:"}\nYES: ${answerLink(l, "yes")}\nNO: ${answerLink(l, "no")}\n\n${repliesEnabled() ? 'رد بكلمة "نعم" أو "لا".' : 'اضغط "YES" (نعم) أو "NO" (لا) أعلاه.'}${sign}`,
   }),
   booking: (l: PartnerLead) => ({
     subject: "Book your PHONIEX partnership meeting",
@@ -90,7 +127,7 @@ export async function createPartnerLead(input: { name: string; email: string; co
   const id = newId();
   db()
     .prepare("insert into partner_leads (id, name, email, company, message, token, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?)")
-    .run(id, input.name, input.email, input.company ?? "", input.message ?? "", randomBytes(24).toString("base64url"), now.toISOString(), now.toISOString());
+    .run(id, input.name, input.email, input.company ?? "", input.message ?? "", makeLinkToken({ name: input.name, email: input.email, company: input.company ?? "" }, now), now.toISOString(), now.toISOString());
   log(id, "lead.created", input.company ? `Company: ${input.company}` : "");
   const lead = get(id)!;
   await send(lead, "confirm");
@@ -117,9 +154,27 @@ export async function applyAnswer(leadId: string, intent: "yes" | "no", source: 
   return get(leadId);
 }
 
-export function leadByToken(token: string) {
-  if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return null;
-  return (db().prepare("select * from partner_leads where token = ?").get(token) as PartnerLead | undefined) ?? null;
+/**
+ * Finds the request behind a YES / NO link. If this server has no record of it
+ * (another server, or data reset by a redeploy), it is rebuilt from the signed link.
+ */
+export function leadByToken(token: string, now = new Date()) {
+  if (!/^[A-Za-z0-9_.-]{20,1200}$/.test(token)) return null;
+  const stored = db().prepare("select * from partner_leads where token = ?").get(token) as PartnerLead | undefined;
+  if (stored) return stored;
+  const p = readLinkToken(token, now);
+  if (!p) return null;
+  const byEmail = db()
+    .prepare("select * from partner_leads where email = ? order by created_at desc limit 1")
+    .get(p.e) as PartnerLead | undefined;
+  if (byEmail) return byEmail;
+  const id = newId();
+  const created = new Date(p.t * 1000).toISOString();
+  db()
+    .prepare("insert into partner_leads (id, name, email, company, token, confirm_sent_at, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?)")
+    .run(id, p.n, p.e, p.c, token, created, created, now.toISOString());
+  log(id, "lead.restored", "Rebuilt from the signed email link");
+  return get(id);
 }
 
 const AiIntent = z.object({ intent: z.enum(["yes", "no", "unclear"]) });

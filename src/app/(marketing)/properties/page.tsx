@@ -80,10 +80,11 @@ export default async function PropertiesPage(props: PageProps<"/properties">) {
           <Link href={`/properties${qs("map")}`} className={`rounded-md px-3 py-1 font-medium ${mapView ? "bg-accent text-accent-fg" : "text-muted"}`}>Map</Link>
         </div>
       </div>
-      {mapView && results.length ? (
+      {mapView ? (
         <div className="mt-4 space-y-2">
           <PropertiesMap pins={pins} />
           {pins.length < results.length ? <p className="text-xs text-muted">{results.length - pins.length} listing(s) have no map location yet.</p> : null}
+          {results.length > 0 && pins.length === 0 ? <p className="text-xs text-muted">Pins appear once owners set the location on their listing.</p> : null}
         </div>
       ) : null}
       {mapView && results.length ? null : results.length === 0 ? (
