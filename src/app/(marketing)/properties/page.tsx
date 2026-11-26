@@ -92,7 +92,10 @@ export default async function PropertiesPage(props: PageProps<"/properties">) {
         <div className="card mt-4 text-center">
           <p className="text-muted">No properties listed yet{Object.values(filters).some(Boolean) ? " that match your search" : ""}.</p>
           <p className="mt-1 text-sm text-muted">Own a property? List it yourself in minutes — no agent needed.</p>
-          <Link href="/app/listings/new" className="btn-primary mt-4">List your property</Link>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Link href="/app/listings/new" className="btn-primary">List your property</Link>
+            <Link href="/samples" className="btn-secondary">See a sample villa in 3D</Link>
+          </div>
         </div>
       ) : (
         <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

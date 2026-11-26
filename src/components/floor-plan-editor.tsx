@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { FloorPlanSvg } from "@/components/floor-plan-svg";
-import { ROOM_KINDS, SQFT_PER_M2, totalArea, type FloorPlanT, type RoomKind } from "@/lib/floor-plan";
+import { FloorPlan, ROOM_KINDS, SQFT_PER_M2, totalArea, type FloorPlanT, type RoomKind } from "@/lib/floor-plan";
 import { saveFloorPlanAction } from "@/lib/actions/listings";
 
 const snap = (v: number) => Math.round(v * 2) / 2; // 0.5 m grid
@@ -217,6 +217,28 @@ export function FloorPlanEditor({
 
         {!readOnly ? (
           <div className="space-y-2">
+            <label className="btn-secondary w-full cursor-pointer">
+              Import plan file (.json)
+              <input
+                type="file"
+                accept=".json,application/json"
+                className="sr-only"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!file) return;
+                  try {
+                    const parsed = FloorPlan.safeParse(JSON.parse(await file.text()));
+                    if (!parsed.success) throw new Error();
+                    update({ ...parsed.data, rooms: parsed.data.rooms.map((r) => ({ ...r, panoId: null })) });
+                    setSelectedId(null);
+                    setMessage({ ok: true, text: `Imported ${parsed.data.rooms.length} rooms. Press Save to keep it.` });
+                  } catch {
+                    setMessage({ ok: false, text: "That file isn't a PHONIEX floor plan (.json)." });
+                  }
+                }}
+              />
+            </label>
             <button type="button" className="btn-primary w-full" onClick={save} disabled={pending || !dirty}>
               {pending ? "Saving…" : dirty ? "Save floor plan" : "Saved"}
             </button>
