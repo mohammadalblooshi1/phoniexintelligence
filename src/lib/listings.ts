@@ -227,7 +227,7 @@ export function listEnquiries(userId: string, listingId: string) {
 const PUBLIC_STATUSES = "('published','sold')";
 
 export type SearchFilters = {
-  purpose?: string; emirate?: string; type?: string; minPrice?: number; maxPrice?: number; beds?: number; q?: string;
+  purpose?: string; emirate?: string; type?: string; minPrice?: number; maxPrice?: number; beds?: number; studio?: boolean; q?: string;
 };
 
 export function searchPublicListings(f: SearchFilters) {
@@ -238,7 +238,8 @@ export function searchPublicListings(f: SearchFilters) {
   if (f.type) { where.push("l.property_type = ?"); args.push(f.type); }
   if (f.minPrice) { where.push("l.price_aed >= ?"); args.push(f.minPrice); }
   if (f.maxPrice) { where.push("l.price_aed <= ?"); args.push(f.maxPrice); }
-  if (f.beds) { where.push("l.bedrooms >= ?"); args.push(f.beds); }
+  if (f.studio) where.push("coalesce(l.bedrooms, 0) = 0");
+  else if (f.beds) { where.push("l.bedrooms >= ?"); args.push(f.beds); }
   if (f.q) { where.push("(l.title like ? or l.community like ?)"); args.push(`%${f.q}%`, `%${f.q}%`); }
   return db()
     .prepare(

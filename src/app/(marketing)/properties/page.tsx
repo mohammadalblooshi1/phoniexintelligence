@@ -21,7 +21,7 @@ export default async function PropertiesPage(props: PageProps<"/properties">) {
   const sp = await props.searchParams;
   const filters = {
     purpose: str(sp.purpose), emirate: str(sp.emirate), type: str(sp.type), q: str(sp.q),
-    minPrice: num(sp.min), maxPrice: num(sp.max), beds: num(sp.beds),
+    minPrice: num(sp.min), maxPrice: num(sp.max), beds: num(sp.beds), studio: sp.beds === "studio",
   };
   const results = searchPublicListings(filters);
   const mapView = sp.view === "map";
@@ -32,7 +32,7 @@ export default async function PropertiesPage(props: PageProps<"/properties">) {
   );
   const qs = (view: string) => {
     const p = new URLSearchParams();
-    for (const [k, v] of Object.entries({ q: filters.q, purpose: filters.purpose, emirate: filters.emirate, type: filters.type, beds: filters.beds, max: filters.maxPrice })) if (v) p.set(k, String(v));
+    for (const [k, v] of Object.entries({ q: filters.q, purpose: filters.purpose, emirate: filters.emirate, type: filters.type, beds: filters.studio ? "studio" : filters.beds, max: filters.maxPrice })) if (v) p.set(k, String(v));
     if (view === "map") p.set("view", "map");
     const s = p.toString();
     return s ? `?${s}` : "";
@@ -63,9 +63,10 @@ export default async function PropertiesPage(props: PageProps<"/properties">) {
           <option value="">All types</option>
           {PROPERTY_TYPES.map((t) => <option key={t}>{t}</option>)}
         </select>
-        <select name="beds" defaultValue={filters.beds ?? ""} className="input" aria-label="Bedrooms">
+        <select name="beds" defaultValue={filters.studio ? "studio" : filters.beds ?? ""} className="input" aria-label="Bedrooms">
           <option value="">Any beds</option>
-          {[1, 2, 3, 4, 5].map((b) => <option key={b} value={b}>{b}+ beds</option>)}
+          <option value="studio">Studio</option>
+          {[1, 2, 3, 4, 5, 6, 7, 8, 10].map((b) => <option key={b} value={b}>{b}+ bed{b === 1 ? "" : "s"}</option>)}
         </select>
         <div className="flex gap-2">
           <input name="max" type="number" min={0} defaultValue={filters.maxPrice} className="input" placeholder="Max AED" aria-label="Maximum price in AED" />
