@@ -2,8 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { anthropic, modelFor } from "@/lib/ai";
 import { agentByKey, offlineAnswer } from "@/lib/agent-team-answer";
-import { bookedReply, bookingStep } from "@/lib/scheduling-chat";
-import { createPartnerLead } from "@/lib/partners";
+import { ASK_YESNO_AR, ASK_YESNO_EN, bookingStep, noReply, yesReply } from "@/lib/scheduling-chat";
+import { applyAnswer, bookingLink, createPartnerLead, latestLeadByEmail } from "@/lib/partners";
 
 // Public chat with the six partnership agents on the AI Agents page.
 // Uses Claude when connected; otherwise the closest prepared answer.
@@ -70,17 +70,28 @@ export async function POST(request: Request) {
   if (agent.key === "scheduling") {
     const step = bookingStep(parsed.data.message, parsed.data.history);
     if (step.kind === "ask") return Response.json({ answer: step.text });
+    const ar = /[\u0600-\u06ff]/.test(parsed.data.message);
     if (step.kind === "book") {
       if (!bookingAllowed(ip)) {
-        return Response.json({ answer: "I've already sent several booking emails from this connection. Please use the Contact us page, or try again later." });
+        return Response.json({ answer: "I've already taken several bookings from this connection. Please use the Contact us page, or try again later." });
       }
       try {
-        const { duplicate } = await createPartnerLead({ name: step.name, email: step.email, message: "Booked through the Scheduling Agent chat" });
-        return Response.json({ answer: bookedReply(step.name, step.email, /[\u0600-\u06ff]/.test(parsed.data.message), duplicate) });
+        // Saved as a partnership request; no email yet: the visitor answers YES / NO here.
+        await createPartnerLead({ name: step.name, email: step.email, message: "Via the Scheduling Agent chat" }, new Date(), { confirmEmail: false });
+        const first = step.name.split(" ")[0];
+        return Response.json({ answer: ar ? `شكراً ${first}. ${ASK_YESNO_AR}` : `Thanks, ${first}. ${ASK_YESNO_EN}` });
       } catch (err) {
         console.error("[agent-team] booking failed", err);
-        return Response.json({ answer: "Sorry, I couldn't send the confirmation email just now. Please try the Contact us page." });
+        return Response.json({ answer: "Sorry, something went wrong. Please try the Contact us page." });
       }
+    }
+    if (step.kind === "answer") {
+      // The request may be on another server (or reset by an update): recreate it from the chat.
+      const lead =
+        latestLeadByEmail(step.email) ??
+        (await createPartnerLead({ name: step.name, email: step.email, message: "Via the Scheduling Agent chat" }, new Date(), { confirmEmail: false })).lead;
+      await applyAnswer(lead.id, step.intent, "chat", parsed.data.message);
+      return Response.json({ answer: step.intent === "yes" ? yesReply(lead.name, bookingLink(lead), ar) : noReply(lead.name, ar) });
     }
   }
 

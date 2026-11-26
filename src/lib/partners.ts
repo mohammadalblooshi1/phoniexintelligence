@@ -118,7 +118,12 @@ async function send(lead: PartnerLead, kind: keyof typeof emails) {
 // ---------------------------------------------------------------- steps
 
 /** Step 1: form submitted. Repeat submissions for the same email within a day don't send again. */
-export async function createPartnerLead(input: { name: string; email: string; company?: string; message?: string }, now = new Date()) {
+export async function createPartnerLead(
+  input: { name: string; email: string; company?: string; message?: string },
+  now = new Date(),
+  opts: { confirmEmail?: boolean } = {},
+) {
+  const confirmEmail = opts.confirmEmail ?? true;
   const recent = db()
     .prepare("select * from partner_leads where email = ? and created_at > ? order by created_at desc limit 1")
     .get(input.email, hoursAgo(now, 24)) as PartnerLead | undefined;
@@ -130,8 +135,10 @@ export async function createPartnerLead(input: { name: string; email: string; co
     .run(id, input.name, input.email, input.company ?? "", input.message ?? "", makeLinkToken({ name: input.name, email: input.email, company: input.company ?? "" }, now), now.toISOString(), now.toISOString());
   log(id, "lead.created", input.company ? `Company: ${input.company}` : "");
   const lead = get(id)!;
-  await send(lead, "confirm");
-  update(id, { confirm_sent_at: now.toISOString() });
+  if (confirmEmail) {
+    await send(lead, "confirm");
+    update(id, { confirm_sent_at: now.toISOString() });
+  }
   await sendEmail({
     to: env.salesInbox(),
     subject: `New partnership request: ${input.name}${input.company ? ` (${input.company})` : ""}`,
@@ -142,7 +149,7 @@ export async function createPartnerLead(input: { name: string; email: string; co
 }
 
 /** Step 2: the partner answered (button or email reply). Safe to call more than once. */
-export async function applyAnswer(leadId: string, intent: "yes" | "no", source: "link" | "email" | "admin", replyText?: string, now = new Date()) {
+export async function applyAnswer(leadId: string, intent: "yes" | "no", source: "link" | "email" | "admin" | "chat", replyText?: string, now = new Date()) {
   const lead = get(leadId);
   if (!lead) return null;
   const open = lead.status === "awaiting_reply" || lead.status === "no_response";
@@ -150,7 +157,8 @@ export async function applyAnswer(leadId: string, intent: "yes" | "no", source: 
   if (!open && !changeOfMind) return lead; // already handled
   update(leadId, { status: intent === "yes" ? "interested" : "declined", replied_at: now.toISOString(), reply_text: replyText?.slice(0, 1000) ?? null });
   log(leadId, `answer.${intent}`, `via ${source}`);
-  await send(get(leadId)!, intent === "yes" ? "booking" : "declined");
+  // In the website chat the answer (and the Calendly link) is shown right there, so no email.
+  if (source !== "chat") await send(get(leadId)!, intent === "yes" ? "booking" : "declined");
   return get(leadId);
 }
 
@@ -287,4 +295,9 @@ export function partnerEvents(leadId: string) {
   return db().prepare("select type, detail, created_at from partner_events where lead_id = ? order by id").all(leadId) as {
     type: string; detail: string; created_at: string;
   }[];
+}
+
+/** Latest partnership request for an email address (used by the Scheduling Agent chat). */
+export function latestLeadByEmail(email: string) {
+  return (db().prepare("select * from partner_leads where email = ? order by created_at desc limit 1").get(email.toLowerCase()) as PartnerLead | undefined) ?? null;
 }

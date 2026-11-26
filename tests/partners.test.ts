@@ -159,3 +159,11 @@ test("email wording asks to tap YES until email replies are set up", async () =>
   await P.createPartnerLead({ name: "Tariq", email: "tariq@x.test" }, new Date());
   assert.match(mails("tariq@x.test")[0].body, /Tap YES to receive a booking link/);
 });
+
+test("chat bookings send no emails: YES and NO are answered in the chat", async () => {
+  const { lead } = await P.createPartnerLead({ name: "Chat Person", email: "chat@x.test" }, new Date(), { confirmEmail: false });
+  assert.equal(mails("chat@x.test").length, 0);
+  const after = await P.applyAnswer(lead.id, "yes", "chat", "yes");
+  assert.equal(after!.status, "interested");
+  assert.equal(mails("chat@x.test").length, 0);
+});

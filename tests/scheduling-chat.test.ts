@@ -27,3 +27,17 @@ test("collects name and email over two messages, in either order", () => {
 test("Arabic names are kept", () => {
   assert.equal(cleanName("اسمي محمد البلوشي m@x.ae"), "محمد البلوشي");
 });
+
+test("YES / NO is answered right in the chat, using the details given earlier", async () => {
+  const { ASK_YESNO_EN } = await import("../src/lib/scheduling-chat");
+  const h = [
+    { role: "user" as const, content: "book a meeting" },
+    { role: "assistant" as const, content: ASK_DETAILS_EN },
+    { role: "user" as const, content: "Omar Saleh omar@x.ae" },
+    { role: "assistant" as const, content: `Thanks, Omar. ${ASK_YESNO_EN}` },
+  ];
+  assert.deepEqual(bookingStep("Yes please", h), { kind: "answer", intent: "yes", name: "Omar Saleh", email: "omar@x.ae" });
+  assert.deepEqual(bookingStep("no thanks", h), { kind: "answer", intent: "no", name: "Omar Saleh", email: "omar@x.ae" });
+  assert.equal(bookingStep("نعم", h).kind, "answer");
+  assert.deepEqual(bookingStep("maybe later?", h), { kind: "ask", text: ASK_YESNO_EN });
+});

@@ -82,7 +82,7 @@ export function AgentTeamChat({ agents }: { agents: AgentCard[] }) {
           ) : (
             messages.map((m, i) => (
               <div key={i} className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm ${m.role === "user" ? "ml-auto bg-accent text-accent-fg" : "bg-surface-2"}`} dir="auto">
-                {m.content}
+                {linkify(m.content)}
               </div>
             ))
           )}
@@ -104,5 +104,18 @@ export function AgentTeamChat({ agents }: { agents: AgentCard[] }) {
         </form>
       </div>
     </div>
+  );
+}
+
+/** Shows web links in answers (such as the Calendly booking link) as tappable links. */
+function linkify(text: string) {
+  return text.split(/(https:\/\/[^\s]+)/g).map((part, i) =>
+    part.startsWith("https://") ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="break-all font-semibold underline">
+        {part.includes("calendly.com") ? "Book your meeting time →" : part}
+      </a>
+    ) : (
+      part
+    ),
   );
 }
