@@ -1,6 +1,8 @@
 // The PHONIEX partnership agent team: six specialist agents coordinated by one
 // main agent. Used by the public AI Agents page and as Agent Builder templates.
 
+import { EXTRA_ANSWERS } from "@/lib/agent-team-extra";
+
 export type TeamAgent = {
   key: string;
   name: string;
@@ -163,7 +165,7 @@ export const AGENT_TEAM: TeamAgent[] = [
       },
       {
         q: "What happens if a partner misses the meeting?",
-        k: ["miss", "missed", "noshow", "absent", "late", "didn't", "join", "attend", "cant", "can't", "cancel", "come", "make"],
+        k: ["miss", "missed", "noshow", "absent", "late", "didn't", "join", "attend", "cant", "can't", "come", "make"],
         a: "I send a polite message the same day offering new times. If they book again, everything continues as normal; if not, I let you know so you can decide whether to follow up personally.",
       },
       {
@@ -411,3 +413,6 @@ export const COMMON_ANSWERS: QA[] = [
     a: "You're welcome! If you'd like to talk with our team, the Contact us page is the quickest way to book a meeting. العفو!",
   },
 ];
+
+// Add the extra prepared answers to each agent.
+for (const agent of AGENT_TEAM) agent.conversation.push(...(EXTRA_ANSWERS[agent.key] ?? []));
