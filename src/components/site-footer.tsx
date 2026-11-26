@@ -21,6 +21,7 @@ export function SiteFooter() {
         <div>
           <h3 className="mb-2 text-sm font-semibold">Company</h3>
           <ul className="space-y-1 text-sm text-muted">
+            <li><Link href="/agents" className="hover:text-fg">AI Agents</Link></li>
             <li><Link href="/industries" className="hover:text-fg">Industries</Link></li>
             <li><Link href="/pricing" className="hover:text-fg">Pricing</Link></li>
             <li><Link href="/contact" className="hover:text-fg">Contact us</Link></li>

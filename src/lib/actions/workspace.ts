@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { canEdit, getWorkspaces, requireUser, requireWorkspace, setActiveOrg } from "@/lib/session";
 import * as repo from "@/lib/repo";
-import { industries, templateByKey, agentModels } from "@/lib/site";
+import { industries, agentModels } from "@/lib/site";
+import { findTemplate } from "@/lib/templates";
 import type { FormState } from "@/lib/actions/public";
 
 const industrySlugs = [...industries.map((i) => i.slug), "other"] as const;
@@ -49,7 +50,7 @@ const AgentInput = z.object({
 export async function createAgentFromTemplate(formData: FormData) {
   const { user, ws } = await requireWorkspace();
   if (!canEdit(ws.role)) redirect("/app/agents?error=permission");
-  const template = templateByKey(String(formData.get("template") ?? ""));
+  const template = findTemplate(String(formData.get("template") ?? ""));
   if (!template) redirect("/app/agents/new");
   const id = repo.createAgent(user.id, ws.id, {
     name: template.name,

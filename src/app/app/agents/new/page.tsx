@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { agentTemplates, industries } from "@/lib/site";
+import { industries } from "@/lib/site";
+import { allTemplates } from "@/lib/templates";
 import { requireWorkspace } from "@/lib/session";
 import { createAgentFromTemplate } from "@/lib/actions/workspace";
 
@@ -8,7 +9,7 @@ export const metadata: Metadata = { title: "New agent" };
 export default async function NewAgentPage() {
   const { ws } = await requireWorkspace();
   const suggested = industries.find((i) => i.slug === ws.industry)?.suggestedAgents ?? [];
-  const sorted = [...agentTemplates].sort(
+  const sorted = [...allTemplates].sort(
     (a, b) => Number(suggested.includes(b.key)) - Number(suggested.includes(a.key)),
   );
 
