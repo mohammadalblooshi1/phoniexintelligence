@@ -29,7 +29,7 @@ test("public chat endpoint answers, validates and limits", async () => {
   const ok = await ask({ agent: "analyst", message: "How did partnerships go this week?" });
   assert.equal(ok.status, 200);
   assert.match((await ok.json()).answer, /This week/);
-  assert.equal((await ask({ agent: "analyst", message: "x" })).status, 400, "too short");
+  assert.equal((await ask({ agent: "analyst", message: "   " })).status, 400, "empty");
   assert.equal((await ask({ agent: "ghost", message: "hello there" })).status, 404);
   let last = 200;
   for (let i = 0; i < 20; i++) last = (await ask({ agent: "intake", message: "hello there" }, "9.9.9.9")).status;
