@@ -1,7 +1,8 @@
 import "server-only";
 import { db, newId } from "@/lib/db";
 
-type Mail = { to: string; subject: string; text: string; replyTo?: string };
+type Attachment = { filename: string; content: Buffer };
+type Mail = { to: string; subject: string; text: string; replyTo?: string; attachments?: Attachment[] };
 
 // Every email is recorded in the local outbox (shown on the platform-admin page).
 // When RESEND_API_KEY is set it is also sent through Resend (https://resend.com).
@@ -14,7 +15,10 @@ async function sendViaResend(mail: Mail) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM(), to: [mail.to], subject: mail.subject, text: mail.text, ...(mail.replyTo ? { reply_to: mail.replyTo } : {}) }),
+    body: JSON.stringify({
+      from: FROM(), to: [mail.to], subject: mail.subject, text: mail.text, ...(mail.replyTo ? { reply_to: mail.replyTo } : {}),
+      ...(mail.attachments?.length ? { attachments: mail.attachments.map((a) => ({ filename: a.filename, content: a.content.toString("base64") })) } : {}),
+    }),
     signal: AbortSignal.timeout(15_000),
   });
   const data = (await res.json().catch(() => ({}))) as { id?: string; message?: string };

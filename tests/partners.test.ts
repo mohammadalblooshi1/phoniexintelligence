@@ -196,3 +196,24 @@ test("thank-you letters go to people whose Calendly meeting ended in the last da
     delete process.env.CALENDLY_API_TOKEN;
   }
 });
+
+test("the first email carries the PHONIEX overview PDF", async () => {
+  const real = globalThis.fetch;
+  const bodies: { to: string[]; attachments?: { filename: string; content: string }[] }[] = [];
+  process.env.RESEND_API_KEY = "test";
+  globalThis.fetch = (async (_u: unknown, init?: RequestInit) => {
+    bodies.push(JSON.parse(String(init?.body)));
+    return Response.json({ id: "x" });
+  }) as typeof fetch;
+  try {
+    await P.createPartnerLead({ name: "Pdf Person", email: "pdf@x.test" }, new Date());
+  } finally {
+    globalThis.fetch = real;
+    delete process.env.RESEND_API_KEY;
+  }
+  const partner = bodies.find((b) => b.to[0] === "pdf@x.test")!;
+  assert.equal(partner.attachments?.[0].filename, "PHONIEX-Overview.pdf");
+  assert.ok(partner.attachments![0].content.startsWith("JVBER"), "real PDF bytes");
+  const owner = bodies.find((b) => b.to[0] !== "pdf@x.test");
+  assert.equal(owner?.attachments, undefined, "owner notice has no attachment");
+});

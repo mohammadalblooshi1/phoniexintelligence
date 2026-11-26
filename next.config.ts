@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Ship the overview PDF with the server code so emails can attach it.
+  outputFileTracingIncludes: { "/**": ["./assets/phoniex-overview.pdf"] },
   turbopack: {
     rules: {
       "*.css": {

@@ -1,5 +1,7 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { db, newId, nowIso } from "@/lib/db";
@@ -88,7 +90,11 @@ const sign = "\n\nBest regards,\nPHONIEX Partnerships\nPHONIEX Intelligence · U
 const emails = {
   confirm: (l: PartnerLead) => ({
     subject: "PHONIEX partnership — would you like to meet?",
-    text: `Hi ${l.name},\n\nThank you for your interest in partnering with PHONIEX.\n\nWould you like to book a short meeting with our partnerships team?\n\n${repliesEnabled() ? "Just reply to this email with YES and we'll send you the booking link, or NO if now is not the right time." : `Tap YES to receive a booking link, or NO if now is not the right time:\nYES, book a meeting: ${answerLink(l, "yes")}\nNO, not now: ${answerLink(l, "no")}`}\n\n${repliesEnabled() ? 'للتأكيد، رد على هذه الرسالة بكلمة "نعم" أو "لا".' : 'للتأكيد، اضغط على رابط "YES" (نعم) أو "NO" (لا) أعلاه.'}${sign}`,
+    text: `Hi ${l.name},\n\nThank you for your interest in partnering with PHONIEX.\n\nWe've attached a short PDF overview of PHONIEX and what we do.\n\nWould you like to book a short meeting with our partnerships team?\n\n${repliesEnabled() ? "Just reply to this email with YES and we'll send you the booking link, or NO if now is not the right time." : `Tap YES to receive a booking link, or NO if now is not the right time:\nYES, book a meeting: ${answerLink(l, "yes")}\nNO, not now: ${answerLink(l, "no")}`}\n\n${repliesEnabled() ? 'للتأكيد، رد على هذه الرسالة بكلمة "نعم" أو "لا".' : 'للتأكيد، اضغط على رابط "YES" (نعم) أو "NO" (لا) أعلاه.'}${sign}`,
+  }),
+  overview: (l: PartnerLead) => ({
+    subject: "Your PHONIEX overview",
+    text: `Hi ${l.name},\n\nThank you for chatting with us. As promised, we've attached a short PDF overview of PHONIEX and what we do.\n\nIf you haven't already, just answer YES in the chat to get your meeting booking link.\n\nمرفق ملخص عن PHONIEX. شكراً لتواصلك معنا.${sign}`,
   }),
   followUp: (l: PartnerLead) => ({
     subject: "Following up: your PHONIEX partnership meeting",
@@ -108,9 +114,19 @@ const emails = {
   }),
 };
 
+/** The PHONIEX overview PDF sent with the first email (assets/phoniex-overview.pdf). */
+function overviewPdf() {
+  try {
+    return [{ filename: "PHONIEX-Overview.pdf", content: readFileSync(join(process.cwd(), "assets", "phoniex-overview.pdf")) }];
+  } catch {
+    return [];
+  }
+}
+
 async function send(lead: PartnerLead, kind: keyof typeof emails) {
   const e = emails[kind](lead);
-  const r = await sendEmail({ to: lead.email, subject: e.subject, text: e.text, replyTo: replyTo() });
+  const attachments = kind === "confirm" || kind === "overview" ? overviewPdf() : [];
+  const r = await sendEmail({ to: lead.email, subject: e.subject, text: e.text, replyTo: replyTo(), attachments });
   log(lead.id, `email.${kind}`, r.ok ? (r.sent ? "sent" : "saved to outbox") : `failed: ${"error" in r ? r.error : ""}`);
   return r;
 }
@@ -121,7 +137,7 @@ async function send(lead: PartnerLead, kind: keyof typeof emails) {
 export async function createPartnerLead(
   input: { name: string; email: string; company?: string; message?: string },
   now = new Date(),
-  opts: { confirmEmail?: boolean } = {},
+  opts: { confirmEmail?: boolean; overviewEmail?: boolean } = {},
 ) {
   const confirmEmail = opts.confirmEmail ?? true;
   const recent = db()
@@ -136,6 +152,7 @@ export async function createPartnerLead(
   log(id, "lead.created", input.company ? `Company: ${input.company}` : "");
   const lead = get(id)!;
   if (confirmEmail) await send(lead, "confirm");
+  else if (opts.overviewEmail) await send(lead, "overview");
   // Asked by email or in the website chat: either way, no answer for a day means a follow-up email.
   update(id, { confirm_sent_at: now.toISOString() });
   await sendEmail({

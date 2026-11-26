@@ -77,9 +77,9 @@ export async function POST(request: Request) {
       }
       try {
         // Saved as a partnership request; no email yet: the visitor answers YES / NO here.
-        await createPartnerLead({ name: step.name, email: step.email, message: "Via the Scheduling Agent chat" }, new Date(), { confirmEmail: false });
+        await createPartnerLead({ name: step.name, email: step.email, message: "Via the Scheduling Agent chat" }, new Date(), { confirmEmail: false, overviewEmail: true });
         const first = step.name.split(" ")[0];
-        return Response.json({ answer: ar ? `شكراً ${first}. ${ASK_YESNO_AR}` : `Thanks, ${first}. ${ASK_YESNO_EN}` });
+        return Response.json({ answer: ar ? `شكراً ${first}. أرسلت لك ملخصاً عن PHONIEX بصيغة PDF على بريدك. ${ASK_YESNO_AR}` : `Thanks, ${first}. I've emailed you a short PDF overview of PHONIEX. ${ASK_YESNO_EN}` });
       } catch (err) {
         console.error("[agent-team] booking failed", err);
         return Response.json({ answer: "Sorry, something went wrong. Please try the Contact us page." });
