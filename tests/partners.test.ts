@@ -167,3 +167,32 @@ test("chat bookings send no emails: YES and NO are answered in the chat", async 
   assert.equal(after!.status, "interested");
   assert.equal(mails("chat@x.test").length, 0);
 });
+
+test("chat visitors who never answer YES / NO get one follow-up email the next day", async () => {
+  const t0 = new Date("2026-03-01T08:00:00Z");
+  await P.createPartnerLead({ name: "Quiet Visitor", email: "quiet@x.test" }, t0, { confirmEmail: false });
+  assert.equal(mails("quiet@x.test").length, 0);
+  await P.runPartnerAutomation(new Date(t0.getTime() + 25 * 3600_000));
+  assert.match(mails("quiet@x.test").at(-1)!.subject, /Following up/);
+});
+
+test("thank-you letters go to people whose Calendly meeting ended in the last day", async () => {
+  process.env.CALENDLY_API_TOKEN = "test-token";
+  const now = new Date("2026-03-05T12:00:00Z");
+  const real = globalThis.fetch;
+  globalThis.fetch = (async (url: string | URL) => {
+    const u = String(url);
+    if (u.endsWith("/users/me")) return Response.json({ resource: { uri: "https://api.calendly.com/users/U1" } });
+    if (u.includes("/scheduled_events?")) return Response.json({ collection: [{ uri: "https://api.calendly.com/scheduled_events/E1", end_time: "2026-03-05T10:30:00.000Z" }] });
+    if (u.includes("/scheduled_events/E1/invitees")) return Response.json({ collection: [{ email: "met@x.test", name: "Met Partner", status: "active" }] });
+    return real(url);
+  }) as typeof fetch;
+  try {
+    assert.equal(await P.thankCalendlyMeetings(now), 1);
+    assert.match(mails("met@x.test").at(-1)!.subject, /Thank you for meeting/);
+    assert.equal(await P.thankCalendlyMeetings(now), 0, "only once");
+  } finally {
+    globalThis.fetch = real;
+    delete process.env.CALENDLY_API_TOKEN;
+  }
+});

@@ -88,11 +88,11 @@ const sign = "\n\nBest regards,\nPHONIEX Partnerships\nPHONIEX Intelligence · U
 const emails = {
   confirm: (l: PartnerLead) => ({
     subject: "PHONIEX partnership — would you like to meet?",
-    text: `Hi ${l.name},\n\nThank you for your interest in partnering with PHONIEX.\n\nWould you like to book a short meeting with our partnerships team?\n\n${repliesEnabled() ? "Just reply to this email with YES to receive a booking link, or NO if now is not the right time. Or tap:" : "Tap YES to receive a booking link, or NO if now is not the right time:"}\nYES, book a meeting: ${answerLink(l, "yes")}\nNO, not now: ${answerLink(l, "no")}\n\n${repliesEnabled() ? 'للتأكيد، رد على هذه الرسالة بكلمة "نعم" أو "لا".' : 'للتأكيد، اضغط على رابط "YES" (نعم) أو "NO" (لا) أعلاه.'}${sign}`,
+    text: `Hi ${l.name},\n\nThank you for your interest in partnering with PHONIEX.\n\nWould you like to book a short meeting with our partnerships team?\n\n${repliesEnabled() ? "Just reply to this email with YES and we'll send you the booking link, or NO if now is not the right time." : `Tap YES to receive a booking link, or NO if now is not the right time:\nYES, book a meeting: ${answerLink(l, "yes")}\nNO, not now: ${answerLink(l, "no")}`}\n\n${repliesEnabled() ? 'للتأكيد، رد على هذه الرسالة بكلمة "نعم" أو "لا".' : 'للتأكيد، اضغط على رابط "YES" (نعم) أو "NO" (لا) أعلاه.'}${sign}`,
   }),
   followUp: (l: PartnerLead) => ({
     subject: "Following up: your PHONIEX partnership meeting",
-    text: `Hi ${l.name},\n\nWe wanted to follow up on our message from yesterday about a partnership meeting with PHONIEX.\n\n${repliesEnabled() ? "Reply YES and we'll send you a booking link, or NO if you'd prefer not to meet right now. Or tap:" : "Tap YES and we'll send you a booking link, or NO if you'd prefer not to meet right now:"}\nYES: ${answerLink(l, "yes")}\nNO: ${answerLink(l, "no")}\n\n${repliesEnabled() ? 'رد بكلمة "نعم" أو "لا".' : 'اضغط "YES" (نعم) أو "NO" (لا) أعلاه.'}${sign}`,
+    text: `Hi ${l.name},\n\nWe wanted to follow up on our message from yesterday about a partnership meeting with PHONIEX.\n\n${repliesEnabled() ? "Just reply YES and we'll send you the booking link, or NO if you'd prefer not to meet right now." : `Tap YES and we'll send you a booking link, or NO if you'd prefer not to meet right now:\nYES: ${answerLink(l, "yes")}\nNO: ${answerLink(l, "no")}`}\n\n${repliesEnabled() ? 'رد بكلمة "نعم" أو "لا".' : 'اضغط "YES" (نعم) أو "NO" (لا) أعلاه.'}${sign}`,
   }),
   booking: (l: PartnerLead) => ({
     subject: "Book your PHONIEX partnership meeting",
@@ -135,10 +135,9 @@ export async function createPartnerLead(
     .run(id, input.name, input.email, input.company ?? "", input.message ?? "", makeLinkToken({ name: input.name, email: input.email, company: input.company ?? "" }, now), now.toISOString(), now.toISOString());
   log(id, "lead.created", input.company ? `Company: ${input.company}` : "");
   const lead = get(id)!;
-  if (confirmEmail) {
-    await send(lead, "confirm");
-    update(id, { confirm_sent_at: now.toISOString() });
-  }
+  if (confirmEmail) await send(lead, "confirm");
+  // Asked by email or in the website chat: either way, no answer for a day means a follow-up email.
+  update(id, { confirm_sent_at: now.toISOString() });
   await sendEmail({
     to: env.salesInbox(),
     subject: `New partnership request: ${input.name}${input.company ? ` (${input.company})` : ""}`,
@@ -159,6 +158,12 @@ export async function applyAnswer(leadId: string, intent: "yes" | "no", source: 
   log(leadId, `answer.${intent}`, `via ${source}`);
   // In the website chat the answer (and the Calendly link) is shown right there, so no email.
   if (source !== "chat") await send(get(leadId)!, intent === "yes" ? "booking" : "declined");
+  await sendEmail({
+    to: env.salesInbox(),
+    subject: `${lead.name} said ${intent === "yes" ? "YES — booking link sent" : "NO — thank-you sent"}`,
+    text: `${lead.name} <${lead.email}> answered ${intent.toUpperCase()} (via ${source}).${intent === "yes" ? "\n\nThey received your Calendly link. You'll get Calendly's own notice when they pick a time." : ""}`,
+    replyTo: lead.email,
+  });
   return get(leadId);
 }
 
@@ -276,6 +281,7 @@ export async function runPartnerAutomation(now = new Date()) {
     log(id, "lead.no_response", "No answer after the follow-up");
     result.stopped++;
   }
+  result.thanks += await thankCalendlyMeetings(now);
   const met = db()
     .prepare("select id from partner_leads where status = 'booked' and thanks_sent_at is null and meeting_end <= ?")
     .all(now.toISOString()) as { id: string }[];
@@ -300,4 +306,46 @@ export function partnerEvents(leadId: string) {
 /** Latest partnership request for an email address (used by the Scheduling Agent chat). */
 export function latestLeadByEmail(email: string) {
   return (db().prepare("select * from partner_leads where email = ? order by created_at desc limit 1").get(email.toLowerCase()) as PartnerLead | undefined) ?? null;
+}
+
+// ---------------------------------------------------------------- Calendly
+
+type CalendlyPage<T> = { collection: T[] };
+async function calendly<T>(path: string): Promise<T> {
+  const res = await fetch(path.startsWith("https://") ? path : `https://api.calendly.com${path}`, {
+    headers: { Authorization: `Bearer ${process.env.CALENDLY_API_TOKEN}` },
+  });
+  if (!res.ok) throw new Error(`Calendly ${res.status}`);
+  return (await res.json()) as T;
+}
+
+/**
+ * Sends the thank-you letter to everyone whose Calendly meeting ended in the last day.
+ * Reads Calendly directly (needs CALENDLY_API_TOKEN), so it works without webhooks and
+ * even if this server has no record of the request. Runs once a day with the cron.
+ */
+export async function thankCalendlyMeetings(now = new Date()) {
+  if (!process.env.CALENDLY_API_TOKEN) return 0;
+  let sent = 0;
+  try {
+    const me = await calendly<{ resource: { uri: string } }>("/users/me");
+    const since = hoursAgo(now, 24);
+    const q = new URLSearchParams({ user: me.resource.uri, status: "active", min_start_time: hoursAgo(now, 36), max_start_time: now.toISOString(), count: "100" });
+    const events = await calendly<CalendlyPage<{ uri: string; end_time: string }>>(`/scheduled_events?${q}`);
+    for (const ev of events.collection) {
+      if (ev.end_time <= since || ev.end_time > now.toISOString()) continue;
+      const invitees = await calendly<CalendlyPage<{ email: string; name: string; status: string }>>(`${ev.uri}/invitees?status=active`);
+      for (const inv of invitees.collection) {
+        let lead = latestLeadByEmail(inv.email);
+        if (lead?.thanks_sent_at) continue;
+        if (!lead) lead = (await createPartnerLead({ name: inv.name, email: inv.email, message: "Met through Calendly" }, now, { confirmEmail: false })).lead;
+        update(lead.id, { status: "booked", meeting_end: ev.end_time });
+        await markMeetingDone(lead.id, now);
+        sent++;
+      }
+    }
+  } catch (err) {
+    console.error("[partners] Calendly check failed", err);
+  }
+  return sent;
 }
