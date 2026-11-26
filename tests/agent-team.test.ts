@@ -16,7 +16,7 @@ test("six agents, each with a role, tasks and prepared answers", () => {
 test("offline answers match the question, or explain how the agent helps", () => {
   const scheduling = agentByKey("scheduling")!;
   assert.match(offlineAnswer(scheduling, "How many meetings do I have this week?"), /partner meetings/);
-  assert.match(offlineAnswer(scheduling, "Can you move my meeting with Fatima?"), /Thursday/);
+  assert.match(offlineAnswer(scheduling, "Fatima can't make Tuesday anymore. Can you move it?"), /Thursday/);
   const fallback = offlineAnswer(scheduling, "What colour is the sky?");
   assert.match(fallback, /I'm the Scheduling Agent/);
   assert.equal(agentByKey("nope"), null);
@@ -34,4 +34,19 @@ test("public chat endpoint answers, validates and limits", async () => {
   let last = 200;
   for (let i = 0; i < 20; i++) last = (await ask({ agent: "intake", message: "hello there" }, "9.9.9.9")).status;
   assert.equal(last, 429, "per-visitor limit");
+});
+
+test("every prepared question returns its own answer", async () => {
+  const { COMMON_ANSWERS } = await import("@/lib/agent-team");
+  for (const a of AGENT_TEAM) {
+    for (const qa of a.conversation) {
+      if (/دورك/.test(qa.q)) continue; // identity questions get the agent's own introduction
+      assert.equal(offlineAnswer(a, qa.q), qa.a, `${a.key}: ${qa.q}`);
+    }
+    for (const qa of COMMON_ANSWERS) {
+      if (qa.q === "Who are you?" || (a.key === "proposal" && /cost/.test(qa.q))) continue;
+      assert.equal(offlineAnswer(a, qa.q), qa.a, `${a.key}/common: ${qa.q}`);
+    }
+  }
+  assert.match(offlineAnswer(AGENT_TEAM[2], "من أنت؟"), /^أنا وكيل المواعيد/);
 });
