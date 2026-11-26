@@ -2,6 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { anthropic, modelFor } from "@/lib/ai";
 import { agentByKey, offlineAnswer } from "@/lib/agent-team-answer";
+import { bookedReply, bookingStep } from "@/lib/scheduling-chat";
+import { createPartnerLead } from "@/lib/partners";
 
 // Public chat with the six partnership agents on the AI Agents page.
 // Uses Claude when connected; otherwise the closest prepared answer.
@@ -32,6 +34,16 @@ function allowed(ip: string) {
   return true;
 }
 
+const bookings = new Map<string, number[]>();
+function bookingAllowed(ip: string) {
+  const now = Date.now();
+  const recent = (bookings.get(ip) ?? []).filter((t) => now - t < 3600_000);
+  if (recent.length >= 3) return false;
+  recent.push(now);
+  bookings.set(ip, recent);
+  return true;
+}
+
 export async function POST(request: Request) {
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
@@ -52,6 +64,24 @@ export async function POST(request: Request) {
       },
       { status: 429 },
     );
+  }
+
+  // Scheduling Agent: collect name + email in the chat, then start the real booking flow.
+  if (agent.key === "scheduling") {
+    const step = bookingStep(parsed.data.message, parsed.data.history);
+    if (step.kind === "ask") return Response.json({ answer: step.text });
+    if (step.kind === "book") {
+      if (!bookingAllowed(ip)) {
+        return Response.json({ answer: "I've already sent several booking emails from this connection. Please use the Contact us page, or try again later." });
+      }
+      try {
+        const { duplicate } = await createPartnerLead({ name: step.name, email: step.email, message: "Booked through the Scheduling Agent chat" });
+        return Response.json({ answer: bookedReply(step.name, step.email, /[\u0600-\u06ff]/.test(parsed.data.message), duplicate) });
+      } catch (err) {
+        console.error("[agent-team] booking failed", err);
+        return Response.json({ answer: "Sorry, I couldn't send the confirmation email just now. Please try the Contact us page." });
+      }
+    }
   }
 
   const client = anthropic();

@@ -95,7 +95,7 @@ export function AgentTeamChat({ agents }: { agents: AgentCard[] }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             className="input"
-            placeholder={`Ask the ${agent.name} for help…`}
+            placeholder={agent.key === "scheduling" ? "Type \"book a meeting\" or your name and email…" : `Ask the ${agent.name} for help…`}
             maxLength={500}
             aria-label={`Message the ${agent.name}`}
             dir="auto"
