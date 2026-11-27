@@ -1,19 +1,61 @@
-// The Partnership Agent's form, shown as a QR code: scan it with a phone camera to open the form.
-// Each submission is handled by Zapier: welcome email with the PDF in Outlook → reply YES/NO →
+"use client";
+
+// The Partnership Agent's form, on our own website (no embedded third-party form).
+// Submissions go to the agent's Zapier webhook: welcome email with the PDF in Outlook → reply YES/NO →
 // meeting link → "YES, I did the meeting" → thank-you + feedback → Google Sheets tracker.
-const FORM_URL = "https://tally.so/r/RWP4bj";
+import { useActionState } from "react";
+import { ActionForm } from "@/components/action-form";
+import { submitPartnershipForm } from "@/lib/actions/partners";
+import type { FormState } from "@/lib/actions/public";
+import { FieldError, FormMessage, Honeypot } from "@/components/form-bits";
+
+const TYPES = ["Real estate developer", "Broker / agency", "Property owner", "Hotel or hospitality", "Technology partner", "Other"];
 
 export function PartnershipForm() {
-  return (
-    <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
-      <img src="/qr-form.svg" alt="QR code that opens the PHONIEX partnership form" width={220} height={220} className="shrink-0 rounded-2xl border-4 border-accent bg-white p-2" />
-      <div className="space-y-3">
-        <p className="text-lg font-semibold">Scan with your phone camera</p>
-        <p className="text-muted">The partnership form opens on your phone. It takes about one minute, and our Partnership Agent replies by email within a few minutes.</p>
-        <p className="text-sm text-muted">
-          On your phone already? <a href={FORM_URL} target="_blank" rel="noopener noreferrer" className="text-accent underline">Open the form</a>.
-        </p>
+  const [state, action, pending] = useActionState<FormState, FormData>(submitPartnershipForm, null);
+  if (state?.ok) {
+    return (
+      <div className="space-y-3" role="status">
+        <p className="text-lg font-semibold">Check your inbox</p>
+        <p className="text-sm">{state.message}</p>
+        <p className="text-xs text-muted">Can&apos;t see it? Look in your spam or junk folder.</p>
       </div>
-    </div>
+    );
+  }
+  return (
+    <ActionForm action={action} className="space-y-4" noValidate>
+      <Honeypot />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor="name">Full name</label>
+          <input id="name" name="name" className="input" required autoComplete="name" />
+          <FieldError state={state} name="name" />
+        </div>
+        <div>
+          <label className="label" htmlFor="email">Email</label>
+          <input id="email" name="email" type="email" className="input" required autoComplete="email" />
+          <FieldError state={state} name="email" />
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor="company">Company (optional)</label>
+          <input id="company" name="company" className="input" autoComplete="organization" />
+        </div>
+        <div>
+          <label className="label" htmlFor="partnerType">You are (optional)</label>
+          <select id="partnerType" name="partnerType" className="input" defaultValue="">
+            <option value="">Choose one</option>
+            {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="label" htmlFor="message">How would you like to work with us? (optional)</label>
+        <textarea id="message" name="message" rows={4} className="input" placeholder="e.g. We're a property developer in Sharjah and want 3D tours for our projects." />
+      </div>
+      <FormMessage state={state} />
+      <button className="btn-primary" disabled={pending}>{pending ? "Sending…" : "Request a meeting"}</button>
+    </ActionForm>
   );
 }
