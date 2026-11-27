@@ -43,6 +43,16 @@ export const services = [
   { key: "custom", name: "Custom software", summary: "Custom enterprise software, dashboards, integrations and support." },
 ] as const;
 
+/** What a client can ask us to build: the "What do you want us to do?" question on the website. */
+export const requestOptions = [
+  { key: "ai-agent", name: "An AI agent", summary: "A chatbot or assistant that answers customers and does tasks for you, 24/7." },
+  { key: "automation", name: "Automation", summary: "Repeated work done automatically: emails, forms, follow-ups, reports." },
+  { key: "app", name: "A mobile or web app", summary: "An app for your customers or your team." },
+  { key: "website", name: "A website", summary: "A modern website that brings in customers." },
+  { key: "3d", name: "3D of my business or land", summary: "Turn your property, land or business into a real 3D model." },
+  { key: "partnership", name: "A partnership", summary: "Work together with PHONIEX as a partner." },
+] as const;
+
 export type Industry = {
   slug: string;
   name: string;

@@ -8,10 +8,11 @@ import { ActionForm } from "@/components/action-form";
 import { submitPartnershipForm } from "@/lib/actions/partners";
 import type { FormState } from "@/lib/actions/public";
 import { FieldError, FormMessage, Honeypot } from "@/components/form-bits";
+import { requestOptions } from "@/lib/site";
 
 const TYPES = ["Real estate developer", "Broker / agency", "Property owner", "Hotel or hospitality", "Technology partner", "Other"];
 
-export function PartnershipForm() {
+export function PartnershipForm({ defaultService }: { defaultService?: string }) {
   const [state, action, pending] = useActionState<FormState, FormData>(submitPartnershipForm, null);
   if (state?.ok) {
     return (
@@ -25,6 +26,18 @@ export function PartnershipForm() {
   return (
     <ActionForm action={action} className="space-y-4" noValidate>
       <Honeypot />
+      <fieldset>
+        <legend className="label">What would you like us to do for you?</legend>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          {requestOptions.map((o) => (
+            <label key={o.key} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent-soft">
+              <input type="checkbox" name="service" value={o.key} defaultChecked={o.key === defaultService} className="mt-0.5 accent-[var(--accent)]" />
+              <span><span className="font-medium">{o.name}</span><br /><span className="text-muted">{o.summary}</span></span>
+            </label>
+          ))}
+        </div>
+        <FieldError state={state} name="service" />
+      </fieldset>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="name">Full name</label>
@@ -51,11 +64,11 @@ export function PartnershipForm() {
         </div>
       </div>
       <div>
-        <label className="label" htmlFor="message">How would you like to work with us? (optional)</label>
-        <textarea id="message" name="message" rows={4} className="input" placeholder="e.g. We're a property developer in Sharjah and want 3D tours for our projects." />
+        <label className="label" htmlFor="message">Tell us a little more (optional)</label>
+        <textarea id="message" name="message" rows={4} className="input" placeholder="e.g. We run 3 salons in Dubai and want an AI agent that answers WhatsApp and books appointments." />
       </div>
       <FormMessage state={state} />
-      <button className="btn-primary" disabled={pending}>{pending ? "Sending…" : "Request a meeting"}</button>
+      <button className="btn-primary" disabled={pending}>{pending ? "Sending…" : "Send my request"}</button>
     </ActionForm>
   );
 }

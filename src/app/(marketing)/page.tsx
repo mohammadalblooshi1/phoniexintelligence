@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { divisions, industries, services, site } from "@/lib/site";
+import { divisions, industries, requestOptions, services, site } from "@/lib/site";
 import { searchPublicListings } from "@/lib/listings";
 import { aed } from "@/lib/format";
 
@@ -56,7 +56,18 @@ export default function HomePage() {
 
       <section id="services" className="border-y border-border bg-surface py-16">
         <div className="container-page">
-          <h2 className="text-2xl font-bold sm:text-3xl">Core services</h2>
+          <h2 className="text-2xl font-bold sm:text-3xl">What do you want us to build?</h2>
+          <p className="mt-2 text-muted">Pick one and tell us about your business. Our team replies by email within minutes.</p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {requestOptions.map((o) => (
+              <Link key={o.key} href={`/contact?service=${o.key}`} className="group rounded-xl border border-border bg-bg p-5 transition-colors hover:border-accent">
+                <h3 className="font-semibold group-hover:text-accent">{o.name}</h3>
+                <p className="mt-2 text-sm text-muted">{o.summary}</p>
+                <span className="mt-3 inline-block text-sm font-semibold text-accent">I want this →</span>
+              </Link>
+            ))}
+          </div>
+          <h2 className="mt-14 text-2xl font-bold sm:text-3xl">Core services</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {services.map((s) => (
               <div key={s.key} className="rounded-xl border border-border bg-bg p-5">
