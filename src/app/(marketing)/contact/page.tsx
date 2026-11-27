@@ -37,6 +37,7 @@ export default function ContactPage() {
           </ol>
           <p className="text-sm text-muted">
             Have a specific project? Use <Link href="/start" className="text-accent underline">Start a project</Link> for a scoped proposal.
+            {" "}Prefer email? Use our <Link href="/partner" className="text-accent underline">partnership request form</Link>.
           </p>
         </div>
         <div className="card lg:col-span-3">
