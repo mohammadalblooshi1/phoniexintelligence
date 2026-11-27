@@ -7,7 +7,6 @@ import { z } from "zod";
 import { requireUser } from "@/lib/session";
 import * as P from "@/lib/partners";
 import type { FormState } from "@/lib/actions/public";
-import { requestOptions } from "@/lib/site";
 
 const Contact = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(120),
@@ -95,7 +94,6 @@ export async function adminRunAutomationAction() {
 // PDF in Outlook → reply YES/NO → meeting link → "YES, I did the meeting" → thank-you + feedback.
 // Set PARTNER_FORM_WEBHOOK_URL in Vercel (Settings → Environment Variables) to the agent's catch-hook URL.
 const PARTNER_HOOK = process.env.PARTNER_FORM_WEBHOOK_URL ?? "";
-const SERVICE_KEYS = requestOptions.map((o) => o.key) as [string, ...string[]];
 const PARTNER_TYPES = ["Real estate developer", "Broker / agency", "Property owner", "Hotel or hospitality", "Technology partner", "Other"] as const;
 
 const PartnerForm = z.object({
@@ -103,21 +101,13 @@ const PartnerForm = z.object({
   email: z.email("Please enter a valid email").max(200),
   company: z.string().trim().max(160).optional(),
   partnerType: z.enum(PARTNER_TYPES).optional(),
-  service: z.array(z.enum(SERVICE_KEYS)).max(SERVICE_KEYS.length).default([]),
   message: z.string().trim().max(1000).optional(),
 });
-
-/** What the agent receives. The client's choices lead the message, so they show in the tracker sheet. */
-function hookPayload(d: z.infer<typeof PartnerForm>) {
-  const wants = d.service.map((k) => requestOptions.find((o) => o.key === k)?.name ?? k);
-  const message = [wants.length ? `Wants: ${wants.join(", ")}.` : "", d.message ?? ""].filter(Boolean).join(" ");
-  return { ...d, email: d.email.toLowerCase(), service: wants.join(", "), message, source: "website" };
-}
 
 export async function submitPartnershipForm(_prev: FormState, formData: FormData): Promise<FormState> {
   if (formData.get("website")) return { ok: true, message: "Thank you — please check your email." };
   const raw = Object.fromEntries(formData);
-  const parsed = PartnerForm.safeParse({ ...raw, partnerType: raw.partnerType || undefined, service: formData.getAll("service") });
+  const parsed = PartnerForm.safeParse({ ...raw, partnerType: raw.partnerType || undefined });
   if (!parsed.success) {
     const errors: Record<string, string> = {};
     parsed.error.issues.forEach((i) => (errors[String(i.path[0])] ??= i.message));
@@ -133,7 +123,7 @@ export async function submitPartnershipForm(_prev: FormState, formData: FormData
     const res = await fetch(PARTNER_HOOK, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(hookPayload(parsed.data)),
+      body: JSON.stringify({ ...parsed.data, email: parsed.data.email.toLowerCase(), source: "website" }),
     });
     if (!res.ok) throw new Error(`webhook ${res.status}`);
   } catch (e) {
