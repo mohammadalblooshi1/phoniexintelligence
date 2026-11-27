@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PartnershipForm, PartnershipSteps } from "@/components/partnership-form";
+import { PartnershipForm } from "@/components/partnership-form";
 
 export const metadata: Metadata = {
   title: "Partnership request",
@@ -16,7 +16,6 @@ export default function PartnerPage() {
             <h1 className="text-3xl font-bold sm:text-4xl">Partnership request</h1>
             <p className="mt-3 text-muted">Tell us who you are and our Partnership Agent will arrange a meeting.</p>
           </div>
-          <PartnershipSteps />
         </div>
         <div className="card lg:col-span-3">
           <PartnershipForm />

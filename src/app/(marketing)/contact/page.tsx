@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PartnershipForm, PartnershipSteps } from "@/components/partnership-form";
+import { PartnershipForm } from "@/components/partnership-form";
 
 export const metadata: Metadata = {
   title: "Contact us",
@@ -20,7 +20,6 @@ export default function ContactPage() {
               Partnership Agent will set up a meeting.
             </p>
           </div>
-          <PartnershipSteps />
           <p className="text-sm text-muted">
             Have a specific project? Use <Link href="/start" className="text-accent underline">Start a project</Link> for a scoped proposal.
           </p>
