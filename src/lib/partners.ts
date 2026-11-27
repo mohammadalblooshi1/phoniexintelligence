@@ -9,6 +9,7 @@ import { sendEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 import { anthropic, modelFor } from "@/lib/ai";
 import { classifyReply, newText, type ReplyIntent } from "@/lib/partner-reply";
+import * as Outlook from "@/lib/outlook";
 
 // Partnership appointment agent:
 //  1. Partner fills the form  -> confirmation email: reply YES / NO (or click a button)
@@ -42,7 +43,8 @@ function update(id: string, fields: Partial<PartnerLead>) {
 
 const replyTo = () => process.env.PARTNER_REPLY_TO || undefined;
 /** Partners can answer by replying to the email only when inbound email is set up. */
-const repliesEnabled = () => Boolean(process.env.PARTNER_REPLY_TO && process.env.INBOUND_EMAIL_SECRET);
+// Email replies are read either from the connected Outlook inbox or from an inbound-email service.
+const repliesEnabled = () => Outlook.outlookConnected() || Boolean(process.env.PARTNER_REPLY_TO && process.env.INBOUND_EMAIL_SECRET);
 
 // ---------------------------------------------------------------- signed links
 // The YES / NO links carry the partner's details, signed so they can't be forged.
@@ -94,7 +96,7 @@ const emails = {
   }),
   overview: (l: PartnerLead) => ({
     subject: "Your PHONIEX overview",
-    text: `Hi ${l.name},\n\nThank you for chatting with us. As promised, we've attached a short PDF overview of PHONIEX and what we do.\n\nIf you haven't already, just answer YES in the chat to get your meeting booking link.\n\nمرفق ملخص عن PHONIEX. شكراً لتواصلك معنا.${sign}`,
+    text: `Hi ${l.name},\n\nThank you for chatting with us. As promised, we've attached a short PDF overview of PHONIEX and what we do.\n\nIf you haven't already, answer YES in the chat${repliesEnabled() ? " or simply reply YES to this email" : ""} to get your meeting booking link.\n\nمرفق ملخص عن PHONIEX. شكراً لتواصلك معنا.${sign}`,
   }),
   followUp: (l: PartnerLead) => ({
     subject: "Following up: your PHONIEX partnership meeting",
@@ -143,7 +145,7 @@ export async function createPartnerLead(
   const recent = db()
     .prepare("select * from partner_leads where email = ? and created_at > ? order by created_at desc limit 1")
     .get(input.email, hoursAgo(now, 24)) as PartnerLead | undefined;
-  if (recent) return { lead: recent, duplicate: true };
+  if (recent) return { lead: recent, duplicate: true, contact: null };
 
   const id = newId();
   db()
@@ -155,13 +157,14 @@ export async function createPartnerLead(
   else if (opts.overviewEmail) await send(lead, "overview");
   // Asked by email or in the website chat: either way, no answer for a day means a follow-up email.
   update(id, { confirm_sent_at: now.toISOString() });
+  const contact = await outlookContact(input.email, now);
   await sendEmail({
     to: env.salesInbox(),
     subject: `New partnership request: ${input.name}${input.company ? ` (${input.company})` : ""}`,
-    text: `${input.name} <${input.email}>\nCompany: ${input.company || "-"}\n\n${input.message || ""}`,
+    text: `${input.name} <${input.email}>\nCompany: ${input.company || "-"}\n\n${input.message || ""}${contact ? `\n\n${Outlook.describeContact(contact)}` : ""}`,
     replyTo: input.email,
   });
-  return { lead: get(id)!, duplicate: false };
+  return { lead: get(id)!, duplicate: false, contact };
 }
 
 /** Step 2: the partner answered (button or email reply). Safe to call more than once. */
@@ -279,9 +282,63 @@ export async function markMeetingDone(leadId: string, now = new Date()) {
   return get(leadId);
 }
 
+/** Searches the owner's Outlook for this person (past emails, upcoming meetings). */
+async function outlookContact(email: string, now: Date) {
+  if (!Outlook.outlookConnected()) return null;
+  try {
+    return await Outlook.lookupContact(email, now);
+  } catch (err) {
+    console.error("[partners] Outlook search failed", err);
+    return null;
+  }
+}
+
+/**
+ * Reads YES / NO replies in the owner's Outlook inbox and answers them:
+ * YES → the Calendly link, NO → a thank-you. Each reply is tagged in Outlook
+ * ("PHONIEX handled"), so it is answered once even if this server has no record.
+ */
+export async function processOutlookReplies(now = new Date()) {
+  const result = { yes: 0, no: 0, unclear: 0 };
+  if (!Outlook.outlookConnected()) return result;
+  for (const r of await Outlook.unhandledReplies(now)) {
+    let intent = classifyReply(r.text);
+    if (intent === "unclear") intent = await aiClassify(newText(r.text));
+    if (intent === "unclear") {
+      await Outlook.tagMessage(r.id, Outlook.NEEDS_YOU);
+      await sendEmail({ to: env.salesInbox(), subject: `Partner reply needs you: ${r.fromName}`, text: `${r.fromName} <${r.fromEmail}> replied, but it isn't a clear YES or NO:\n\n${newText(r.text)}`, replyTo: r.fromEmail });
+      result.unclear++;
+      continue;
+    }
+    let lead = latestLeadByEmail(r.fromEmail);
+    if (!lead) lead = (await createPartnerLead({ name: r.fromName, email: r.fromEmail, message: "Replied by email" }, now, { confirmEmail: false })).lead;
+    else if (lead.status === "interested" && intent === "yes") await send(lead, "booking"); // asked again: resend the link
+    await applyAnswer(lead.id, intent, "email", newText(r.text), now);
+    await Outlook.tagMessage(r.id, Outlook.HANDLED);
+    result[intent]++;
+  }
+  return result;
+}
+
+let lastOutlookCheck = 0;
+/** Checks the Outlook inbox at most once a minute (called when the website is used). */
+export async function maybeCheckOutlook() {
+  if (!Outlook.outlookConnected() || Date.now() - lastOutlookCheck < 60_000) return;
+  lastOutlookCheck = Date.now();
+  await processOutlookReplies().catch((err) => console.error("[partners] Outlook check failed", err));
+}
+
 /** Timed steps: follow-up after 1 day, stop after no answer, thank-you after the meeting. */
 export async function runPartnerAutomation(now = new Date()) {
-  const result = { followUps: 0, stopped: 0, thanks: 0 };
+  const result = { followUps: 0, stopped: 0, thanks: 0, outlook: null as null | Record<string, unknown> };
+  if (Outlook.outlookConnected()) {
+    try {
+      result.outlook = { replies: await processOutlookReplies(now), subscription: await Outlook.ensureInboxSubscription(now) };
+    } catch (err) {
+      console.error("[partners] Outlook step failed", err);
+      result.outlook = { error: err instanceof Error ? err.message : "failed" };
+    }
+  }
   const due = db()
     .prepare("select * from partner_leads where status = 'awaiting_reply' and followup_sent_at is null and confirm_sent_at <= ?")
     .all(hoursAgo(now, FOLLOW_UP_AFTER_H)) as PartnerLead[];

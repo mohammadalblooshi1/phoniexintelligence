@@ -235,6 +235,13 @@ create table if not exists partner_events (
 );
 create index if not exists partner_events_lead_idx on partner_events(lead_id, id);
 
+-- Small key/value settings (e.g. the connected Outlook account).
+create table if not exists app_settings (
+  key text primary key,
+  value text not null,
+  updated_at text not null default (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
 -- Emails are stored here instead of being sent (no email provider connected yet).
 create table if not exists outbox (
   id text primary key,

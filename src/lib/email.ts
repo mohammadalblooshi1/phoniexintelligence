@@ -1,5 +1,6 @@
 import "server-only";
 import { db, newId } from "@/lib/db";
+import { outlookConnected, sendOutlookMail } from "@/lib/outlook";
 
 type Attachment = { filename: string; content: Buffer };
 type Mail = { to: string; subject: string; text: string; replyTo?: string; attachments?: Attachment[] };
@@ -28,6 +29,20 @@ async function sendViaResend(mail: Mail) {
 
 export async function sendEmail(mail: Mail) {
   const id = newId();
+  // When the owner's Outlook is connected, emails go out from their own Outlook address.
+  if (outlookConnected()) {
+    db().prepare("insert into outbox (id, to_addr, reply_to, subject, body, status) values (?, ?, ?, ?, ?, 'sending')").run(id, mail.to, mail.replyTo ?? null, mail.subject, mail.text);
+    try {
+      await sendOutlookMail(mail);
+      db().prepare("update outbox set status = 'sent', provider_id = 'outlook' where id = ?").run(id);
+      return { ok: true as const, sent: true };
+    } catch (e) {
+      const error = (e instanceof Error ? e.message : "Outlook error").slice(0, 300);
+      console.error("[email] Outlook failed:", error);
+      db().prepare("update outbox set status = 'failed', error = ? where id = ?").run(error, id);
+      return { ok: false as const, sent: false, error };
+    }
+  }
   db()
     .prepare("insert into outbox (id, to_addr, reply_to, subject, body, status) values (?, ?, ?, ?, ?, ?)")
     .run(id, mail.to, mail.replyTo ?? null, mail.subject, mail.text, process.env.RESEND_API_KEY ? "sending" : "saved");

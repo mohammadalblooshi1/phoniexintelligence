@@ -3,7 +3,8 @@ import { z } from "zod";
 import { anthropic, modelFor } from "@/lib/ai";
 import { agentByKey, offlineAnswer } from "@/lib/agent-team-answer";
 import { ASK_TYPE_AR, ASK_TYPE_EN, ASK_YESNO_AR, ASK_YESNO_EN, bookingStep, changeReply, lateReply, noReply, yesReply } from "@/lib/scheduling-chat";
-import { applyAnswer, bookingLink, createPartnerLead, latestLeadByEmail, partnerNote } from "@/lib/partners";
+import { applyAnswer, bookingLink, createPartnerLead, latestLeadByEmail, maybeCheckOutlook, partnerNote } from "@/lib/partners";
+import { after } from "next/server";
 
 // Public chat with the six partnership agents on the AI Agents page.
 // Uses Claude when connected; otherwise the closest prepared answer.
@@ -66,6 +67,13 @@ export async function POST(request: Request) {
     );
   }
 
+  // While the site is in use, also answer any YES / NO replies waiting in the owner's Outlook.
+  try {
+    after(() => maybeCheckOutlook());
+  } catch {
+    void maybeCheckOutlook(); // outside a web request (tests)
+  }
+
   // Scheduling Agent: collect name + email in the chat, then start the real booking flow.
   if (agent.key === "scheduling") {
     const step = bookingStep(parsed.data.message, parsed.data.history);
@@ -77,8 +85,17 @@ export async function POST(request: Request) {
       }
       try {
         // Saved as a partnership request; no email yet: the visitor answers YES / NO here.
-        await createPartnerLead({ name: step.name, email: step.email, message: "Via the Scheduling Agent chat" }, new Date(), { confirmEmail: false, overviewEmail: true });
+        const { contact } = await createPartnerLead({ name: step.name, email: step.email, message: "Via the Scheduling Agent chat" }, new Date(), { confirmEmail: false, overviewEmail: true });
         const first = step.name.split(" ")[0];
+        const already = contact?.upcoming[0];
+        if (already) {
+          const when = already.start.slice(0, 16).replace("T", " at ");
+          return Response.json({
+            answer: ar
+              ? `شكراً ${first}. وجدت أن لديك اجتماعاً معنا بالفعل يوم ${when} (بتوقيت الإمارات). إذا أردت تغييره، اكتب «تغيير الموعد».`
+              : `Thanks, ${first}. I checked our calendar and you already have a meeting with us on ${when} (UAE time). If you'd like to change it, just say "reschedule".`,
+          });
+        }
         return Response.json({ answer: ar ? `شكراً ${first}. أرسلت لك ملخصاً عن PHONIEX بصيغة PDF على بريدك. ${ASK_YESNO_AR}` : `Thanks, ${first}. I've emailed you a short PDF overview of PHONIEX. ${ASK_YESNO_EN}` });
       } catch (err) {
         console.error("[agent-team] booking failed", err);
