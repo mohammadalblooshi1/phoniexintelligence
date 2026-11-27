@@ -88,3 +88,50 @@ export async function adminRunAutomationAction() {
   revalidatePath("/admin/partners");
   redirect(`/admin/partners?ran=${r.followUps}-${r.stopped}-${r.thanks}`);
 }
+
+// The Partnership Agent's own form on the website (Contact us + Partner page). It posts straight to the
+// agent's Zapier catch hook (no third-party form site, which some networks block): welcome email with the
+// PDF in Outlook → reply YES/NO → meeting link → "YES, I did the meeting" → thank-you + feedback.
+// Set PARTNER_FORM_WEBHOOK_URL in Vercel (Settings → Environment Variables) to the agent's catch-hook URL.
+const PARTNER_HOOK = process.env.PARTNER_FORM_WEBHOOK_URL ?? "";
+const PARTNER_TYPES = ["Real estate developer", "Broker / agency", "Property owner", "Hotel or hospitality", "Technology partner", "Other"] as const;
+
+const PartnerForm = z.object({
+  name: z.string().trim().min(2, "Please enter your name").max(120),
+  email: z.email("Please enter a valid email").max(200),
+  company: z.string().trim().max(160).optional(),
+  partnerType: z.enum(PARTNER_TYPES).optional(),
+  message: z.string().trim().max(1000).optional(),
+});
+
+export async function submitPartnershipForm(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (formData.get("website")) return { ok: true, message: "Thank you — please check your email." };
+  const raw = Object.fromEntries(formData);
+  const parsed = PartnerForm.safeParse({ ...raw, partnerType: raw.partnerType || undefined });
+  if (!parsed.success) {
+    const errors: Record<string, string> = {};
+    parsed.error.issues.forEach((i) => (errors[String(i.path[0])] ??= i.message));
+    return { ok: false, message: "Please fix the highlighted fields.", errors };
+  }
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+  if (limited(ip)) return { ok: false, message: "Too many requests. Please try again in an hour." };
+  if (!PARTNER_HOOK) {
+    console.error("[partner-form] PARTNER_FORM_WEBHOOK_URL is not set");
+    return { ok: false, message: "Sorry, our form is not available right now. Please try again later." };
+  }
+  try {
+    const res = await fetch(PARTNER_HOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...parsed.data, email: parsed.data.email.toLowerCase(), source: "website" }),
+    });
+    if (!res.ok) throw new Error(`webhook ${res.status}`);
+  } catch (e) {
+    console.error("[partner-form] could not reach the Partnership Agent", e);
+    return { ok: false, message: "Sorry, something went wrong. Please try again in a minute." };
+  }
+  return {
+    ok: true,
+    message: `Thank you, ${parsed.data.name}. Our Partnership Agent is sending a welcome email to ${parsed.data.email} in the next few minutes. Reply YES to it to get your meeting link.`,
+  };
+}
