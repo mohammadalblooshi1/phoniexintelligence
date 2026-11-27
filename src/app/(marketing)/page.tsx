@@ -10,7 +10,7 @@ const journey = [
   "Describe your business, users, goals and the features you need.",
   "Our AI solution designer drafts a recommended scope, architecture and plan.",
   "You review and approve the proposal and commercial terms.",
-  "We configure a ready-made product or build your custom website, app, agents and integrations.",
+  "We set up a ready-made product or build your website, app, agents and integrations.",
   "It passes testing, security review and your acceptance — then you get a workspace, training and support.",
 ];
 

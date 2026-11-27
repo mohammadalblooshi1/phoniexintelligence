@@ -58,7 +58,7 @@ export const EXTRA_ANSWERS: Record<string, QA[]> = {
   ],
   proposal: [
     { q: "Do you offer a free trial?", k: ["free", "trial", "test", "try", "demo", "pilot"],
-      a: "We usually suggest a short pilot on one service, such as an AI receptionist or 3D tours for a few properties, so you see results before committing. The exact terms are agreed in the proposal." },
+      a: "Yes. Every business gets 3 months free: create your account, put your properties on the map, sell your products and use an AI agent. After that you can choose Plus, or Custom if you need something unique." },
     { q: "Can we pay monthly?", k: ["monthly", "pay", "payment", "installments", "instalments", "plan", "annual", "yearly", "billing"],
       a: "Yes. Subscriptions are monthly, with a discount for annual payment. Bigger custom projects are usually split into milestones, for example 40% to start, 40% on delivery and 20% after launch." },
     { q: "Is VAT included?", k: ["vat", "tax", "included", "invoice"],

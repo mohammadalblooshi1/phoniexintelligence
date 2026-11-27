@@ -6,7 +6,7 @@ export const site = {
   fullName: "PHONIEX Intelligence",
   tagline: "One AI platform. Every business. Smarter operations.",
   description:
-    "PHONIEX is an AI solutions and digital transformation company: ready-made software subscriptions, customized AI solutions and fully developed digital products for enterprises, small businesses and homes across the UAE.",
+    "PHONIEX is an AI solutions and digital transformation company: one platform for businesses, property and homes across the UAE: AI agents, automation, websites and apps, property listings in 3D, and a marketplace for everything a home needs.",
 };
 
 export type DivisionKey = "enterprise" | "business" | "home";
@@ -16,7 +16,7 @@ export const divisions: { key: DivisionKey; name: string; summary: string }[] = 
     key: "enterprise",
     name: "PHONIEX Enterprise",
     summary:
-      "Custom AI systems for factories, hotels, real estate developers, commercial buildings and large organizations.",
+      "AI systems for factories, hotels, real estate developers, commercial buildings and large organizations.",
   },
   {
     key: "business",
@@ -34,13 +34,13 @@ export const divisions: { key: DivisionKey; name: string; summary: string }[] = 
 
 export const services = [
   { key: "websites", name: "AI websites & apps", summary: "AI-powered websites and mobile/web applications." },
-  { key: "agents", name: "AI agents & chatbots", summary: "Custom AI agents, chatbots and virtual assistants." },
+  { key: "agents", name: "AI agents & chatbots", summary: "AI agents, chatbots and virtual assistants that work 24/7." },
   { key: "predictive", name: "Predictive analytics", summary: "Machine learning, forecasting and predictive analytics." },
   { key: "automation", name: "Automation", summary: "Business process automation and workflow orchestration." },
   { key: "data", name: "Data engineering", summary: "Data engineering, data quality and governance." },
   { key: "vision", name: "Vision & documents", summary: "Computer vision and document intelligence." },
   { key: "twins", name: "Digital twins & IoT", summary: "Digital twins, IoT integrations and smart asset monitoring." },
-  { key: "custom", name: "Custom software", summary: "Custom enterprise software, dashboards, integrations and support." },
+  { key: "custom", name: "Business software", summary: "Enterprise software, dashboards, integrations and support." },
 ] as const;
 
 export type Industry = {
@@ -198,30 +198,30 @@ export const industries: Industry[] = [
 export const plans = [
   {
     key: "starter",
-    name: "Starter",
-    price: "From AED 499 / month",
-    summary: "For small businesses getting started with AI.",
-    features: ["Basic website", "One AI assistant", "Basic analytics", "Limited usage"],
-  },
-  {
-    key: "professional",
-    name: "Professional",
-    price: "From AED 1,999 / month",
-    summary: "For growing businesses that want automation.",
-    features: ["Website or app", "Multiple AI agents", "Automation workflows", "Advanced analytics", "Integrations"],
+    name: "Free for 3 months",
+    price: "AED 0 for 3 months",
+    summary: "For every business. Create your account and start today, no card needed.",
+    features: ["Business account", "Put your properties on the map", "Sell your home products and services", "An AI agent for your customers", "Automation for emails and follow-ups"],
     highlighted: true,
   },
   {
+    key: "professional",
+    name: "Plus",
+    price: "From AED 499 / month",
+    summary: "After your 3 free months: keep everything and grow.",
+    features: ["Everything in the free months", "More AI agents and automations", "Website or app", "Advanced analytics", "Connect your other systems and data"],
+  },
+  {
     key: "enterprise",
-    name: "Enterprise",
+    name: "Custom",
     price: "Custom",
-    summary: "For organizations that need a tailored platform.",
+    summary: "Need something unique? We add it, made for you.",
     features: [
-      "Customized solutions",
+      "Any AI service, even one not on our website",
+      "Features made for your business",
       "Dedicated environment",
-      "Advanced analytics & ML",
       "Security reviews & SSO",
-      "Integrations and priority support",
+      "Priority support",
     ],
   },
 ] as const;

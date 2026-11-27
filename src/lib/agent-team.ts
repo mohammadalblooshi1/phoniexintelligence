@@ -372,7 +372,7 @@ export const COMMON_ANSWERS: QA[] = [
   {
     q: "How much does it cost?",
     k: ["cost", "price", "pricing", "fee", "fees", "much", "aed", "charge", "free"],
-    a: "Pricing depends on the services and the size of your business. You can see the PHONIEX fee plan on our pricing pages, and after a short meeting our team prepares clear options for you to choose from. The first meeting is free.",
+    a: "You start with 3 months free. After that, the Plus plan starts from AED 499 a month, and if you need something unique we prepare a Custom price for you. The pricing page has the details, and the first meeting is free.",
   },
   {
     q: "Is my data safe?",

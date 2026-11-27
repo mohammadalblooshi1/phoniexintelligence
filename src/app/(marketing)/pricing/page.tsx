@@ -9,8 +9,8 @@ export default function PricingPage() {
     <div className="container-page py-16">
       <h1 className="text-3xl font-bold sm:text-4xl">Pricing</h1>
       <p className="mt-3 max-w-2xl text-muted">
-        Monthly or annual subscriptions, plus one-time development, integration, maintenance and consulting fees
-        for custom work. Every proposal is itemized before you approve it.
+        Start free for 3 months, then choose Plus, or Custom if you need something unique. Creating an account, putting your
+        properties on the map and selling your products is part of the free months.
       </p>
       <div className="mt-10 grid gap-4 md:grid-cols-3">
         {plans.map((p) => (
@@ -26,8 +26,8 @@ export default function PricingPage() {
                 <li key={f} className="flex gap-2"><span className="text-accent">✓</span>{f}</li>
               ))}
             </ul>
-            <Link href={p.key === "enterprise" ? "/contact" : "/start"} className="btn-primary mt-6">
-              {p.key === "enterprise" ? "Talk to us" : "Get started"}
+            <Link href={p.key === "enterprise" ? "/contact" : p.key === "starter" ? "/signup" : "/start"} className="btn-primary mt-6">
+              {p.key === "enterprise" ? "Talk to us" : p.key === "starter" ? "Start free" : "Get started"}
             </Link>
           </div>
         ))}
