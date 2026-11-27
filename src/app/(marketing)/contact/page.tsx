@@ -20,13 +20,6 @@ export default function ContactPage() {
               Partnership Agent will set up a meeting.
             </p>
           </div>
-          <div className="flex items-center gap-5 rounded-xl border border-border p-4">
-            <img src="/qr-contact.svg" alt="QR code to open this page on your phone" width={132} height={132} className="shrink-0 rounded-lg bg-white p-1" />
-            <div>
-              <p className="font-semibold">Scan to fill it in on your phone</p>
-              <p className="mt-1 text-sm text-muted">Point your phone camera at the code to open this form.</p>
-            </div>
-          </div>
           <p className="text-sm text-muted">
             Have a specific project? Use <Link href="/start" className="text-accent underline">Start a project</Link> for a scoped proposal.
           </p>
