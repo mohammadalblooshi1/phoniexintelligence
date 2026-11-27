@@ -6,7 +6,7 @@ import { ASK_TYPE_AR, ASK_TYPE_EN, ASK_YESNO_AR, ASK_YESNO_EN, bookingStep, chan
 import { applyAnswer, bookingLink, createPartnerLead, latestLeadByEmail, maybeCheckOutlook, partnerNote } from "@/lib/partners";
 import { after } from "next/server";
 
-// Public chat with the six partnership agents on the AI Agents page.
+// Public chat with the PHONIEX Agent and its five specialist agents on the AI Agents page.
 // Uses Claude when connected; otherwise the closest prepared answer.
 // Limited per visitor to protect the AI budget.
 
@@ -74,8 +74,11 @@ export async function POST(request: Request) {
     void maybeCheckOutlook(); // outside a web request (tests)
   }
 
-  // Scheduling Agent: collect name + email in the chat, then start the real booking flow.
-  if (agent.key === "scheduling") {
+  // Partnership Agent (or the main PHONIEX Agent when asked for a meeting): collect name + email
+  // in the chat, then start the real booking flow.
+  const BOOKING_WORDS = /\b(book|booking|meeting|appointment|meet)\b|موعد|اجتماع|حجز/i;
+  const asksForMeeting = [parsed.data.message, ...(parsed.data.history ?? []).filter((h) => h.role === "user").map((h) => h.content)].some((t) => BOOKING_WORDS.test(t));
+  if (agent.key === "partnership" || (agent.key === "phoniex" && asksForMeeting)) {
     const step = bookingStep(parsed.data.message, parsed.data.history);
     if (step.kind === "ask") return Response.json({ answer: step.text });
     const ar = /[\u0600-\u06ff]/.test(parsed.data.message);
@@ -85,7 +88,7 @@ export async function POST(request: Request) {
       }
       try {
         // Saved as a partnership request; no email yet: the visitor answers YES / NO here.
-        const { contact } = await createPartnerLead({ name: step.name, email: step.email, message: "Via the Scheduling Agent chat" }, new Date(), { confirmEmail: false, overviewEmail: true });
+        const { contact } = await createPartnerLead({ name: step.name, email: step.email, message: "Via the Partnership Agent chat" }, new Date(), { confirmEmail: false, overviewEmail: true });
         const first = step.name.split(" ")[0];
         const already = contact?.upcoming[0];
         if (already) {
@@ -106,12 +109,12 @@ export async function POST(request: Request) {
       // The request may be on another server (or reset by an update): recreate it from the chat.
       const lead =
         latestLeadByEmail(step.email) ??
-        (await createPartnerLead({ name: step.name, email: step.email, message: "Via the Scheduling Agent chat" }, new Date(), { confirmEmail: false })).lead;
+        (await createPartnerLead({ name: step.name, email: step.email, message: "Via the Partnership Agent chat" }, new Date(), { confirmEmail: false })).lead;
       await applyAnswer(lead.id, step.intent, "chat", parsed.data.message);
       return Response.json({ answer: step.intent === "yes" ? (ar ? ASK_TYPE_AR : ASK_TYPE_EN) : noReply(lead.name, ar) });
     }
     if (step.kind === "link") {
-      const lead = latestLeadByEmail(step.email) ?? (await createPartnerLead({ name: step.name, email: step.email, message: "Via the Scheduling Agent chat" }, new Date(), { confirmEmail: false })).lead;
+      const lead = latestLeadByEmail(step.email) ?? (await createPartnerLead({ name: step.name, email: step.email, message: "Via the Partnership Agent chat" }, new Date(), { confirmEmail: false })).lead;
       await partnerNote(lead.id, "Meeting details", `Meeting type: ${step.meetingType}\nCompany and goal: ${step.about || "-"}`);
       return Response.json({ answer: yesReply(lead.name, bookingLink(lead), ar, step.meetingType) });
     }
@@ -139,12 +142,12 @@ export async function POST(request: Request) {
         model: modelFor(model),
         max_tokens: 1200,
         output_config: { effort: "low" },
-        system: `You are the PHONIEX ${agent.name} (${agent.arabic}), one of six AI agents that run partnership work for PHONIEX Intelligence, a UAE AI company.
+        system: `You are the PHONIEX ${agent.name} (${agent.arabic}), part of the PHONIEX agent team at PHONIEX Intelligence, a UAE AI company. The team is led by the main PHONIEX Agent, which handles any task, with five specialists: Partnership, 3D Automation, Proposal, Listing and Analyst.
 Your role: ${agent.role}
 What you do: ${agent.does.join("; ")}.
 Your working rules: ${agent.instructions}
 
-You are answering a visitor on the PHONIEX website who wants to see how you work. You have no access to their real calendar, emails or company data, so show how you would handle their request with concrete, realistic steps; never claim you have already sent, booked or changed anything for them. Keep answers short (2–5 sentences), friendly and practical. Always reply in English, unless the visitor's latest message is written in Arabic: then reply in Arabic. If the question is outside your role, answer briefly and name the teammate who handles it (Intake, Research, Scheduling, Proposal, Success or Analyst Agent). Never invent prices; refer to the PHONIEX fee plan or the team.
+You are answering a visitor on the PHONIEX website who wants to see how you work. You have no access to their real calendar, emails or company data, so show how you would handle their request with concrete, realistic steps; never claim you have already sent, booked or changed anything for them. Keep answers short (2–5 sentences), friendly and practical. Always reply in English, unless the visitor's latest message is written in Arabic: then reply in Arabic. If the question is outside your role, answer briefly and name the teammate who handles it (Partnership, 3D Automation, Proposal, Listing or Analyst Agent; the main PHONIEX Agent can do all of them). Never invent prices; refer to the PHONIEX fee plan or the team.
 
 Example answers in your voice:
 ${examples}`,

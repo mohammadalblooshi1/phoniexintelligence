@@ -1,5 +1,5 @@
-// The PHONIEX partnership agent team: six specialist agents coordinated by one
-// main agent. Used by the public AI Agents page and as Agent Builder templates.
+// The PHONIEX agent team: one main PHONIEX Agent that handles any task, and five
+// specialist agents (Partnership, 3D Automation, Proposal, Listing, Analyst). Used by the public AI Agents page and as Agent Builder templates.
 
 import { EXTRA_ANSWERS } from "@/lib/agent-team-extra";
 
@@ -19,14 +19,97 @@ export type QA = { q: string; a: string; k?: string[] };
 
 export const AGENT_TEAM: TeamAgent[] = [
   {
-    key: "intake",
-    name: "Intake Agent",
-    arabic: "وكيل الاستقبال",
-    role: "Qualifies and scores every new partnership request the moment it arrives.",
-    roleAr: "أستلم طلبات الشراكة الجديدة فوراً، وأحدد نوع الشريك وأولويته، وأرسل رسالة التأكيد بالعربية أو الإنجليزية.",
-    does: ["Reads the request and identifies the partner type", "Scores priority: hot, normal or low", "Sends the confirmation email in Arabic or English"],
+    key: "phoniex",
+    name: "PHONIEX Agent",
+    arabic: "وكيل PHONIEX",
+    role: "One agent for every task: it understands what you need and gets it done with the right specialist.",
+    roleAr: "وكيل واحد لكل المهام: أفهم ما تحتاجه وأنجزه بنفسي مع الوكيل المختص المناسب.",
+    does: ["Handles any request in one conversation", "Hands each task to the right specialist agent", "Keeps everything in one place and reports back"],
     instructions:
-      "You receive new partnership requests. Identify the partner type (developer, broker, contractor, hotel, SME, investor, technology), score priority (hot / normal / low) with one sentence of reasoning, and decide the language for replies. Never promise prices or terms.",
+      "You are the main PHONIEX Agent. Understand what the visitor needs and handle it in one conversation, using the specialists: Partnership Agent (requests, meetings, follow-up), 3D Automation Agent (3D models of businesses, properties and land), Proposal Agent (proposals for approval), Listing Agent (property listings) and Analyst Agent (reports). Never promise prices or terms.",
+    conversation: [
+      {
+        q: "Which tasks can you handle?",
+        k: ["help", "offer", "everything", "tasks", "task", "handle", "all", "services"],
+        a: "Anything PHONIEX does, in one conversation. Tell me what you need: a partnership meeting, a 3D model of your business or land, a property listing, a proposal or a report. I handle it myself with the right specialist agent, so you never have to choose who to ask.",
+      },
+      {
+        q: "Who are your specialist agents?",
+        k: ["specialist", "specialists", "agents", "team", "which", "list", "other"],
+        a: "Five specialists work with me: the Partnership Agent (requests and meetings), the 3D Automation Agent (3D models of businesses, properties and land), the Proposal Agent (proposals for approval), the Listing Agent (property listings) and the Analyst Agent (weekly reports).",
+      },
+      {
+        q: "Why one agent instead of many?",
+        k: ["why", "one", "single", "instead", "many", "different", "sites"],
+        a: "Because most businesses already juggle too many sites and tools. With me you ask once, in one place, and I coordinate the rest: one website, one agent, one place for everything.",
+      },
+      {
+        q: "I want a 3D model of my shop and a meeting with your team.",
+        k: ["and", "both", "also", "meeting", "3d"],
+        a: "I can do both. The 3D Automation Agent will tell you which photos or plans to send for your shop, and the Partnership Agent will email you a meeting link. Share your name and email and I'll start both right away.",
+      },
+      {
+        q: "ماذا يمكنك أن تفعل؟",
+        k: ["ماذا", "تفعل", "تساعد", "خدمات", "كل"],
+        a: "أستطيع مساعدتك في كل ما تقدمه PHONIEX في محادثة واحدة: موعد شراكة، أو نموذج ثلاثي الأبعاد لنشاطك أو أرضك، أو إعلان عقاري، أو عرض سعر، أو تقرير. أنجز المهمة بنفسي مع الوكيل المختص المناسب.",
+      },
+    ],
+  },
+  {
+    key: "model3d",
+    name: "3D Automation Agent",
+    arabic: "وكيل الأتمتة ثلاثية الأبعاد",
+    role: "Turns your business, property or land into a real 3D model you can share.",
+    roleAr: "أحوّل نشاطك التجاري أو عقارك أو أرضك إلى نموذج ثلاثي الأبعاد حقيقي يمكنك مشاركته مع عملائك.",
+    does: ["Builds a 3D model from photos, plans or a site visit", "Adds a 360° tour and a floor plan", "Publishes it on the PHONIEX website, ready to share"],
+    instructions:
+      "Help owners turn a business, property or plot of land into a 3D model: explain what to send (photos, floor plans, plot plan or a site visit), what they receive (3D model, 360° tour, floor plan) and how it is shared. Label any concept or estimate clearly as a concept, never as a final design or price.",
+    conversation: [
+      {
+        q: "How do you turn my property into 3D?",
+        k: ["turn", "make", "create", "property", "3d", "model", "how", "build"],
+        a: "Send me photos or a floor plan, or book a short site visit. I build a 3D model of the place, add a 360° tour and a clean floor plan, and publish it on your PHONIEX page so clients can walk through it online before they visit.",
+      },
+      {
+        q: "Can you make a 3D model of my land?",
+        k: ["land", "plot", "empty", "site", "ground", "farm"],
+        a: "Yes. With the plot plan and a few photos I create a 3D view of the land with its boundaries, access roads and surroundings, plus a concept of what could be built on it. The concept is clearly labelled, so buyers know it's an idea and not a final design.",
+      },
+      {
+        q: "Can you do my shop or restaurant in 3D?",
+        k: ["shop", "store", "restaurant", "cafe", "salon", "business", "office", "showroom"],
+        a: "Yes. I turn your shop, café, salon or showroom into a 3D tour, so customers can look around online, see the space and find you more easily. It works well on your website, Google profile and social media.",
+      },
+      {
+        q: "What do I need to send you?",
+        k: ["send", "need", "photos", "plan", "plans", "drawings", "files", "provide"],
+        a: "Whatever you have: photos from each room or area, a floor plan or plot plan, or architect drawings. If you have nothing ready, our team can visit and capture the space for you.",
+      },
+      {
+        q: "How long does a 3D model take?",
+        k: ["long", "time", "fast", "quick", "days", "ready", "when"],
+        a: "A simple apartment or shop is usually ready within a few days of receiving the photos or plans. Larger villas, buildings or land concepts take longer; the team confirms the timeline before starting.",
+      },
+      {
+        q: "كيف تحوّل عقاري أو أرضي إلى نموذج ثلاثي الأبعاد؟",
+        k: ["ثلاثي", "الأبعاد", "نموذج", "أرضي", "عقاري", "أرض", "عقار"],
+        a: "أرسل لي صوراً أو مخططاً للعقار أو الأرض، أو احجز زيارة قصيرة. أبني نموذجاً ثلاثي الأبعاد مع جولة 360 درجة ومخطط واضح، وأنشره على صفحتك في PHONIEX ليشاهده عملاؤك قبل الزيارة.",
+      },
+      {
+        q: "Make a 3D model for my 5-bedroom villa in Dubai.",
+        a: "Here's how I'd do it: you send photos of each room and the floor plan, I build the 3D model with a 360° tour of every floor, and publish it on your listing page. Buyers can walk through all five bedrooms online, and you share one link instead of many photos.",
+      },
+    ],
+  },
+  {
+    key: "partnership",
+    name: "Partnership Agent",
+    arabic: "وكيل الشراكات",
+    role: "Answers every partnership request, books the meeting and follows up until the partner says thank you.",
+    roleAr: "أستلم كل طلب شراكة وأرسل رسالة الترحيب مع ملف PDF خلال دقيقة، ثم أرسل رابط الاجتماع عند الرد بنعم، وأتابع حتى رسالة الشكر والتقييم.",
+    does: ["Sends the welcome email with the PDF in about a minute", "Reads YES or NO replies and sends the meeting link", "Sends the reminder, the thank-you and the feedback form"],
+    instructions:
+      "Run partnership requests end to end: welcome the partner with the PHONIEX PDF, read their YES or NO reply in Arabic or English, send the meeting link after YES and a polite thank-you after NO, send one reminder after a day without reply, avoid prayer times and Friday midday, and after the meeting send a thank-you with a short feedback form. Never promise prices or terms.",
     conversation: [
       {
         q: "Show me today's new requests.",
@@ -59,11 +142,6 @@ export const AGENT_TEAM: TeamAgent[] = [
         a: "Yes. I read requests in Arabic or English and reply in the partner's language. Every email also includes a short line in the other language, so nothing is missed.",
       },
       {
-        q: "ما هو دورك؟",
-        k: ["دورك", "ماذا", "تفعل", "عمل", "وكيل", "الاستقبال"],
-        a: "أنا وكيل الاستقبال. أستلم طلبات الشراكة الجديدة فوراً، وأحدد نوع الشريك وأولويته، ثم أرسل رسالة تأكيد بالعربية أو الإنجليزية ليرد الشريك بكلمة «نعم» ويحجز موعداً مع الفريق.",
-      },
-      {
         q: "What kind of partners do you work with?",
         k: ["partners", "types", "who", "kind", "developers", "brokers", "contractors", "hotels", "smes"],
         a: "Property developers and brokers, contractors and interior designers, hotels and serviced apartments, salons, cafés, restaurants and gyms, and technology partners across all seven emirates. Each type gets the meeting and information that fits it.",
@@ -76,73 +154,6 @@ export const AGENT_TEAM: TeamAgent[] = [
         q: "And the request from a café owner in Ajman who only wrote “interested”?",
         a: "Priority: normal. Partner type: SME (food and beverage). Likely fit: website with QR menu and the AI receptionist. The confirmation email is sent; I'll ask two short questions after they reply YES so the meeting starts informed.",
       },
-    ],
-  },
-  {
-    key: "research",
-    name: "Research Agent",
-    arabic: "وكيل الأبحاث",
-    role: "Prepares a one-page brief on each partner before you meet.",
-    roleAr: "أجهّز تقريراً من صفحة واحدة عن كل شريك قبل الاجتماع، مع ثلاث أفكار لكيف تساعده PHONIEX.",
-    does: ["Summarises what the company does and its size", "Finds recent projects and news", "Suggests three ways PHONIEX can help them"],
-    instructions:
-      "Before a partner meeting, prepare a one-page brief: what the company does, size, locations, recent projects, and three specific ways PHONIEX services could help. Only use information the partner shared or that is publicly available; mark anything uncertain.",
-    conversation: [
-      {
-        q: "Who are we meeting today?",
-        k: ["meeting", "today", "who", "meet", "agenda", "brief"],
-        a: "Two meetings today. At 11:00 a contracting company from Dubai that wants renovation leads, and at 15:00 a serviced-apartment operator in Abu Dhabi interested in 360° tours. Both briefs are in your inbox, each with three ideas to open with.",
-      },
-      {
-        q: "Compare two companies for me.",
-        k: ["compare", "comparison", "versus", "vs", "difference", "two", "companies"],
-        a: "Send me the two names and I'll compare them side by side: what they do, their size, locations, recent activity and which PHONIEX services fit each one, with a short recommendation on who to prioritise.",
-      },
-      {
-        q: "What's in a partner brief?",
-        k: ["brief", "report", "summary", "one", "page", "prepare", "contains"],
-        a: "A one-page brief with what the company does, its size and locations, recent projects or news, who you're meeting, and three specific ways PHONIEX can help them. I also suggest an opening question and anything to avoid.",
-      },
-      {
-        q: "Where does your information come from?",
-        k: ["source", "sources", "information", "data", "where", "from", "accurate", "reliable"],
-        a: "Only from what the partner shared with us and public information such as their website and published news. I mark anything I'm not sure about, so you never present a guess as a fact.",
-      },
-      {
-        q: "Can you research a company before we contact them?",
-        k: ["before", "contact", "prospect", "find", "new", "companies", "outreach"],
-        a: "Yes. Give me a company name or industry and area, for example developers in Sharjah, and I'll prepare short briefs with how PHONIEX could help each one, so outreach is personal rather than generic.",
-      },
-      {
-        q: "How long does a brief take?",
-        k: ["long", "time", "fast", "quick", "minutes", "ready"],
-        a: "Usually a few minutes. Briefs for meetings booked the next day are prepared automatically and arrive the morning of the meeting.",
-      },
-      {
-        q: "ماذا يتضمن تقرير الشريك؟",
-        k: ["تقرير", "الشريك", "يتضمن", "معلومات", "بحث"],
-        a: "يتضمن التقرير نبذة عن الشركة وحجمها ومواقعها، وآخر مشاريعها أو أخبارها، وثلاث أفكار محددة لكيف يمكن لـ PHONIEX مساعدتها، مع سؤال مقترح لبدء الاجتماع.",
-      },
-      {
-        q: "Prepare me for tomorrow's meeting with the hotel group from Ras Al Khaimah.",
-        a: "Brief ready. They run two beachfront resorts and a serviced-apartment building. Three ideas to open with: 1) AI concierge on WhatsApp for guest questions in Arabic and English, 2) 360° tours of their suites for direct bookings, 3) energy and AC-maintenance alerts for summer. Suggested opening question: “What share of your bookings comes direct versus through agencies?”",
-      },
-      {
-        q: "What should I avoid saying?",
-        a: "Avoid promising booking numbers or exact savings; their contact asked for realistic figures. Present any savings as estimates with assumptions, and offer a pilot on one property first.",
-      },
-    ],
-  },
-  {
-    key: "scheduling",
-    name: "Scheduling Agent",
-    arabic: "وكيل المواعيد",
-    role: "Books, reminds and reschedules meetings so nothing is missed.",
-    roleAr: "أحجز المواعيد وأرسل التذكيرات وأعيد الجدولة عند الحاجة، مع تجنّب أوقات الصلاة وظهر الجمعة.",
-    does: ["Sends the right booking link for each partner type", "Reminders 24 hours and 1 hour before", "Rescues no-shows with a new time"],
-    instructions:
-      "Manage partner meetings: send the right booking link, avoid prayer times and Friday midday, send reminders 24 hours and 1 hour before, and offer a new time if the partner misses the meeting. Never double-book.",
-    conversation: [
       {
         q: "Book a meeting with the developer from Dubai next week.",
         k: ["book", "meeting", "next", "week", "arrange", "set", "up", "with"],
@@ -249,57 +260,43 @@ export const AGENT_TEAM: TeamAgent[] = [
     ],
   },
   {
-    key: "success",
-    name: "Success Agent",
-    arabic: "وكيل نجاح الشركاء",
-    role: "Keeps signed partners active, happy and growing.",
-    roleAr: "أتابع الشركاء بعد التوقيع، وأرسل ملخصاً شهرياً بالنتائج، وأنبّه الفريق مبكراً لأي شريك يحتاج مساعدة.",
-    does: ["Health score for every partner", "Monthly check-in with results", "Spots upsell opportunities"],
+    key: "listing",
+    name: "Listing Agent",
+    arabic: "وكيل الإعلانات العقارية",
+    role: "Puts owners' homes live on the PHONIEX website, ready to view in 3D.",
+    roleAr: "أنشر عقارات الملاك على موقع PHONIEX بسرعة، مع الصور والمخطط والجولة ثلاثية الأبعاد، وأتابع الاستفسارات.",
+    does: ["Writes the listing from a few details", "Adds photos, the floor plan and the 3D tour", "Answers buyer and renter questions"],
     instructions:
-      "After a partner signs, track their activity and satisfaction, send a monthly summary of what PHONIEX delivered, warn the owner early about inactive partners, and suggest relevant next services. Be helpful, never pushy.",
+      "Help property owners list their homes on PHONIEX: turn a few details into a clear listing in Arabic and English, add photos, floor plan, map location and the 3D tour, and answer buyer or renter questions. Never invent features, prices or legal details; ask the owner.",
     conversation: [
       {
-        q: "Which partner is doing best this month?",
-        k: ["best", "top", "doing", "happiest", "performing", "month", "star"],
-        a: "Our contractor partner had the strongest month: their renovation ideas appeared on several listings and they received the most new quote requests. I suggest a short thank-you call and asking if they'd share a testimonial.",
+        q: "How do I list my property?",
+        k: ["list", "listing", "add", "post", "publish", "property", "sell", "rent"],
+        a: "Tell me the basics: type, area, bedrooms, price and whether it's for sale or rent, and upload a few photos. I write the listing in English and Arabic, add the map location and floor plan, and publish it on PHONIEX. The 3D Automation Agent can add a 3D tour too.",
       },
       {
-        q: "Remind partners about their renewal.",
-        k: ["renewal", "renew", "expire", "expiry", "contract", "end", "reminder"],
-        a: "I'll send each partner a friendly reminder 30 days before their agreement ends, with a short summary of what PHONIEX delivered for them and an easy way to renew. You'll see who replied in the dashboard.",
+        q: "Can you write the description for me?",
+        k: ["write", "description", "text", "words", "ad", "advert"],
+        a: "Yes. From a few details I write a clear, honest description that highlights what buyers care about: space, light, location and what's nearby. You review it before it goes live, and nothing is invented.",
       },
       {
-        q: "What happens after we become partners?",
-        k: ["after", "signing", "signed", "onboarding", "start", "next", "become"],
-        a: "I guide you through a short onboarding checklist, set up your first project with the team, and check in regularly. Every month you receive a summary of what PHONIEX delivered for you and ideas for the next month.",
+        q: "Who can see my listing?",
+        k: ["see", "who", "visible", "public", "buyers", "renters", "views"],
+        a: "Everyone visiting the PHONIEX property website across all seven emirates. Buyers and renters can search by area and price, view the photos and 3D tour, and contact you through the listing.",
       },
       {
-        q: "How do you measure partner health?",
-        k: ["health", "score", "measure", "active", "usage", "satisfaction"],
-        a: "I look at activity, results, replies and satisfaction. If something drops, for example no logins for a few weeks, I alert the team early so we can help before it becomes a problem.",
+        q: "Do you answer questions from buyers?",
+        k: ["answer", "questions", "buyers", "enquiries", "messages", "contact", "renters"],
+        a: "Yes. I answer common questions straight away, such as size, parking, nearby schools and viewing times, and pass serious enquiries to you with the buyer's details, so you only spend time on real interest.",
       },
       {
-        q: "Will you try to sell us more services?",
-        k: ["sell", "upsell", "more", "services", "pushy", "offers"],
-        a: "Only when it clearly helps you. If I see a need, such as many weekend bookings that an AI receptionist could handle, I'll suggest it once with the reason. No pressure and no repeated messages.",
+        q: "كيف أعرض عقاري على الموقع؟",
+        k: ["أعرض", "عقاري", "إعلان", "بيع", "إيجار", "الموقع"],
+        a: "أخبرني بنوع العقار والمنطقة وعدد الغرف والسعر، وارفع بعض الصور. أكتب الإعلان بالعربية والإنجليزية، وأضيف الموقع على الخريطة والمخطط، ثم أنشره على موقع PHONIEX.",
       },
       {
-        q: "Who do I contact if I have a problem?",
-        k: ["problem", "issue", "support", "help", "contact", "complaint"],
-        a: "Reply to any email from us or message me here. I'll answer what I can straight away and pass anything else to the right person in the team, and I'll keep you updated until it's solved.",
-      },
-      {
-        q: "ماذا يحدث بعد توقيع الشراكة؟",
-        k: ["بعد", "توقيع", "الشراكة", "البداية", "متابعة"],
-        a: "أساعدك في خطوات البداية مع الفريق، ثم أتابع معك بشكل منتظم، وكل شهر تصلك خلاصة بما قدمته PHONIEX لك وأفكار للشهر القادم.",
-      },
-      {
-        q: "Which partners need attention this week?",
-        a: "Two. A brokerage in Dubai hasn't logged in for three weeks; I suggest a short call to check if they need help with the listing agent. A salon has many weekend bookings; the WhatsApp AI receptionist could take pressure off their staff.",
-      },
-      {
-        q: "Send the monthly update to our contractor partner.",
-        a: "Draft ready: this month their renovation concepts were viewed on several listings and they received new quote requests. I've added one tip for next month. Approve and I'll send it in English with an Arabic summary.",
+        q: "List my 2-bedroom apartment in Sharjah for rent.",
+        a: "Draft ready for your review: a 2-bedroom apartment for rent in Sharjah, with your photos, the floor plan and the map location. Tell me the yearly rent and whether parking is included, and I'll publish it. You can add a 3D tour at any time.",
       },
     ],
   },
@@ -365,7 +362,7 @@ export const COMMON_ANSWERS: QA[] = [
   {
     q: "Who are you?",
     k: ["who", "you", "what", "are", "agent", "phoniex", "introduce", "yourself"],
-    a: "I'm one of six AI agents in the PHONIEX partnership team: Intake, Research, Scheduling, Proposal, Success and Analyst. Together we handle partnership work from the first request to a long-term partnership, and a person from the team approves anything important.",
+    a: "I'm part of the PHONIEX agent team. The PHONIEX Agent handles any task in one conversation, working with five specialists: Partnership, 3D Automation, Proposal, Listing and Analyst. A person from the team approves anything important.",
   },
   {
     q: "How do I start working with PHONIEX?",
@@ -414,8 +411,8 @@ export const COMMON_ANSWERS: QA[] = [
   },
 ];
 
-// Add the extra prepared answers to each agent.
-for (const agent of AGENT_TEAM) agent.conversation.push(...(EXTRA_ANSWERS[agent.key] ?? []));
-
-// The Scheduling Agent is shown first on the AI Agents page.
-AGENT_TEAM.sort((a, b) => Number(b.key === "scheduling") - Number(a.key === "scheduling"));
+// Add the extra prepared answers to each agent (the Partnership Agent took over intake and scheduling).
+const EXTRA_FOR: Record<string, string[]> = { partnership: ["intake", "scheduling"], proposal: ["proposal"], analyst: ["analyst"] };
+const ORDER = ["phoniex", "partnership", "model3d", "proposal", "listing", "analyst"];
+AGENT_TEAM.sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key));
+for (const agent of AGENT_TEAM) for (const k of EXTRA_FOR[agent.key] ?? []) agent.conversation.push(...(EXTRA_ANSWERS[k] ?? []));

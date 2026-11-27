@@ -2,7 +2,7 @@ import "server-only";
 import { agentTemplates, type AgentTemplate } from "@/lib/site";
 import { AGENT_TEAM } from "@/lib/agent-team";
 
-// All Agent Builder templates: the general business agents plus the six
+// All Agent Builder templates: the general business agents plus the PHONIEX
 // partnership-team agents. Server-only, so agent instructions never reach the browser.
 export const allTemplates: AgentTemplate[] = [
   ...agentTemplates,

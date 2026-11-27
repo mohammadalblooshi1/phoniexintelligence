@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     if (!r.ok) return page("Outlook wasn't connected", `<p>${esc(r.error)}</p>`, 403);
     return page(
       "Outlook connected ✓",
-      `<p>Hi ${esc(r.name)}. The PHONIEX Scheduling Agent can now send partner emails from your Outlook, read YES / NO replies and check your calendar.</p>
+      `<p>Hi ${esc(r.name)}. The PHONIEX Partnership Agent can now send partner emails from your Outlook, read YES / NO replies and check your calendar.</p>
 <p><b>One last step, so it stays connected after website updates:</b> in Vercel → Settings → Environment Variables, add <code>OUTLOOK_REFRESH_TOKEN</code> with the value below, then Redeploy. Keep it private, like a password.</p>
 <textarea readonly rows="6" style="width:100%;font-family:monospace;font-size:12px" onclick="this.select()">${esc(r.refreshToken)}</textarea>
 <p style="color:#6b7280;font-size:14px">Microsoft asks you to reconnect about every 90 days. Open <code>/api/outlook/connect</code> again then.</p>`,

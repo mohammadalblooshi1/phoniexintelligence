@@ -5,10 +5,10 @@ import { AgentTeamChat } from "@/components/agent-team-chat";
 
 export const metadata: Metadata = {
   title: "AI Agents",
-  description: "Six AI agents that run partnership work end to end: intake, research, scheduling, proposals, partner success and analytics.",
+  description: "One PHONIEX Agent for every task, with five specialists: Partnership, 3D Automation, Proposal, Listing and Analyst.",
 };
 
-const flow = ["Intake", "Research", "Scheduling", "Proposal", "Success"];
+const flow = ["Partnership", "3D Automation", "Proposal", "Listing", "Analyst"];
 
 export default function AgentsPage() {
   // Only the public card details go to the browser; working rules and prepared answers stay on the server.
@@ -16,10 +16,10 @@ export default function AgentsPage() {
   return (
     <div className="container-page py-14">
       <span className="badge mb-4">PHONIEX AI Agents</span>
-      <h1 className="max-w-3xl text-3xl font-bold sm:text-5xl">Your AI partnership team</h1>
+      <h1 className="max-w-3xl text-3xl font-bold sm:text-5xl">One PHONIEX Agent. Every task.</h1>
       <p className="mt-4 max-w-2xl text-lg text-muted">
-        Six specialist agents work together, from the first request to a long-term partnership. They handle the routine work and
-        ask a person to approve anything important: prices, discounts and contracts.
+        Ask the PHONIEX Agent anything: it does the task itself with the right specialist. Five specialist agents cover partnerships,
+        3D models of your business or land, proposals, property listings and reports, and a person approves anything important.
       </p>
 
       <ol className="mt-8 flex flex-wrap items-center gap-2 text-sm" aria-label="How the agents work together">
@@ -29,7 +29,7 @@ export default function AgentsPage() {
             {i < flow.length - 1 ? <span aria-hidden className="text-muted">→</span> : null}
           </li>
         ))}
-        <li className="ml-1 rounded-full border border-accent bg-accent-soft px-3 py-1 font-medium text-accent">Analyst watches it all</li>
+        <li className="ml-1 rounded-full border border-accent bg-accent-soft px-3 py-1 font-medium text-accent">The PHONIEX Agent leads them all</li>
       </ol>
 
       <section className="mt-10" aria-labelledby="chat-heading">
@@ -45,7 +45,7 @@ export default function AgentsPage() {
 
       <div className="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-surface p-6">
         <div>
-          <p className="text-lg font-semibold">Want this team working for your business?</p>
+          <p className="text-lg font-semibold">Want the PHONIEX Agent working for your business?</p>
           <p className="text-sm text-muted">Request a meeting and we&apos;ll show you how it fits.</p>
         </div>
         <Link href="/contact" className="btn-primary">Contact us</Link>

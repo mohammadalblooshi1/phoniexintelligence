@@ -25,10 +25,16 @@ const IDENTITY = /^\s*(who are you|what are you|who r u|introduce yourself|tell 
 
 /** How each agent introduces itself. */
 export function agentIntro(agent: TeamAgent, arabic: boolean) {
+  const main = agent.key === "phoniex";
   if (arabic) {
-    return `أنا ${agent.arabic}، واحد من ستة وكلاء ذكاء اصطناعي في فريق الشراكات لدى PHONIEX. ${agent.roleAr} كيف أقدر أساعدك؟`;
+    return main
+      ? `أنا ${agent.arabic}، الوكيل الرئيسي في PHONIEX. ${agent.roleAr} كيف أقدر أساعدك؟`
+      : `أنا ${agent.arabic}، أحد الوكلاء المختصين الذين يعملون مع وكيل PHONIEX الرئيسي. ${agent.roleAr} كيف أقدر أساعدك؟`;
   }
-  return `I'm the ${agent.name} (${agent.arabic}), one of six AI agents in the PHONIEX partnership team. ${agent.role} I ${agent.does.map((d) => d.charAt(0).toLowerCase() + d.slice(1)).join(", ")}. How can I help you?`;
+  const what = `${agent.role} I ${agent.does.map((d) => d.charAt(0).toLowerCase() + d.slice(1)).join(", ")}. How can I help you?`;
+  return main
+    ? `I'm the ${agent.name} (${agent.arabic}), the main PHONIEX agent. ${what}`
+    : `I'm the ${agent.name} (${agent.arabic}), one of the specialist agents working with the main PHONIEX Agent. ${what}`;
 }
 
 const isArabic = (s: string) => /[\u0600-\u06ff]/.test(s);
@@ -75,6 +81,10 @@ export function offlineAnswer(agent: TeamAgent, question: string, previous: stri
   const q = words(question);
   const ranked: { score: number; a: string }[] = [];
   for (const qa of agent.conversation) ranked.push({ score: score(q, qa) + 0.05, a: qa.a }); // prefer the agent's own answers
+  // The main PHONIEX Agent does every task: it can also give any specialist's answer.
+  if (agent.key === "phoniex") {
+    for (const other of AGENT_TEAM) if (other.key !== "phoniex") for (const qa of other.conversation) ranked.push({ score: score(q, qa), a: qa.a });
+  }
   for (const qa of COMMON_ANSWERS) ranked.push({ score: score(q, qa), a: qa.a });
   const fits = ranked
     .filter((r) => r.score >= 0.3 && mainlyArabic(r.a) === arabic && !previous.includes(r.a))

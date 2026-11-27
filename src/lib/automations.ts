@@ -18,7 +18,7 @@ export const AUTOMATIONS: Automation[] = [
     title: "Partnership booking",
     industry: "PHONIEX partnerships",
     trigger: { label: "Visitor asks to meet", detail: "A visitor types “book a meeting” in the website chat." },
-    agent: { label: "Scheduling Agent", work: ["Asks for name and email", "Asks YES or NO", "Asks meeting type and goal"] },
+    agent: { label: "Partnership Agent", work: ["Asks for name and email", "Asks YES or NO", "Asks meeting type and goal"] },
     actions: [
       { label: "PDF overview", detail: "Emails the PHONIEX overview PDF." },
       { label: "Calendly link", detail: "Shows the booking link in the chat." },
@@ -31,7 +31,7 @@ export const AUTOMATIONS: Automation[] = [
     title: "No-reply follow-up",
     industry: "Sales",
     trigger: { label: "24 hours, no answer", detail: "A lead hasn't answered YES or NO for a day." },
-    agent: { label: "Intake Agent", work: ["Checks the lead is still open", "Writes a friendly reminder", "Stops after one follow-up"] },
+    agent: { label: "Partnership Agent", work: ["Checks the lead is still open", "Writes a friendly reminder", "Stops after one follow-up"] },
     actions: [
       { label: "Follow-up email", detail: "One polite reminder in English and Arabic." },
       { label: "Lead status", detail: "Marks the lead as followed up." },

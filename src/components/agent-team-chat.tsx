@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 type AgentCard = { key: string; name: string; arabic: string; role: string; does: string[] };
 type Msg = { role: "user" | "assistant"; content: string };
 
-/** Pick one of the six agents and ask it for help. */
+/** Pick the PHONIEX Agent or one of its specialists and ask it for help. */
 export function AgentTeamChat({ agents }: { agents: AgentCard[] }) {
   const [active, setActive] = useState(agents[0].key);
   const [threads, setThreads] = useState<Record<string, Msg[]>>({});
@@ -95,7 +95,7 @@ export function AgentTeamChat({ agents }: { agents: AgentCard[] }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             className="input"
-            placeholder={agent.key === "scheduling" ? "Type \"book a meeting\" or your name and email…" : `Ask the ${agent.name} for help…`}
+            placeholder={agent.key === "partnership" ? "Type \"book a meeting\" or your name and email…" : `Ask the ${agent.name} for help…`}
             maxLength={500}
             aria-label={`Message the ${agent.name}`}
             dir="auto"

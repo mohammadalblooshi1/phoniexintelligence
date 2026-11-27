@@ -260,7 +260,10 @@ const globalForDb = globalThis as unknown as { __phoniexDb?: DatabaseSync };
 
 export function db(): DatabaseSync {
   if (globalForDb.__phoniexDb) return globalForDb.__phoniexDb;
-  const file = process.env.DATABASE_PATH ?? path.join(/* turbopackIgnore: true */ process.cwd(), "data", "phoniex.db");
+  // On Vercel the app folder is read-only; /tmp is the only writable place (it is reset when the server restarts).
+  const file =
+    process.env.DATABASE_PATH ??
+    (process.env.VERCEL ? "/tmp/phoniex.db" : path.join(/* turbopackIgnore: true */ process.cwd(), "data", "phoniex.db"));
   if (file !== ":memory:") mkdirSync(path.dirname(file), { recursive: true });
   const conn = new DatabaseSync(file);
   if (file !== ":memory:") conn.exec("pragma journal_mode = wal;");

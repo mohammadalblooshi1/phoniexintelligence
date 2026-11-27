@@ -8,7 +8,7 @@ export const EXTRA_ANSWERS: Record<string, QA[]> = {
     { q: "How fast do you respond to a new request?", k: ["fast", "quick", "quickly", "respond", "response", "reply", "answer", "minutes", "speed", "soon"],
       a: "Within a minute. The moment the Contact us form is sent, I read it, score it and send the confirmation email, so the partner hears from PHONIEX while they're still thinking about us." },
     { q: "What information do you need from a partner?", k: ["information", "details", "need", "form", "fields", "required"],
-      a: "Only a name and email to start. Company, industry and a short message help me score the request better, but I never block someone for leaving them empty. The Research Agent fills in the rest." },
+      a: "Only a name and email to start. Company, industry and a short message help me score the request better, but I never block someone for leaving them empty. I ask for the rest later, in the meeting." },
     { q: "Do you tell me about every request?", k: ["notify", "notification", "alert", "tell", "inform", "every", "each"],
       a: "Hot requests reach you immediately. Normal and low ones are grouped into one short daily summary, so you aren't interrupted all day." },
     { q: "Can a partner change their answer from NO to YES?", k: ["change", "mind", "later", "no", "yes", "again", "reconsider"],

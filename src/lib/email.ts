@@ -27,35 +27,51 @@ async function sendViaResend(mail: Mail) {
   return { ok: true as const, id: data.id ?? null };
 }
 
+/** The outbox is a log only: if the database can't be written (e.g. a read-only server disk), the email still goes out. */
+function outbox(sql: string, ...args: (string | null)[]) {
+  try {
+    db().prepare(sql).run(...args);
+  } catch (e) {
+    console.error("[email] could not write the outbox log:", e instanceof Error ? e.message : e);
+  }
+}
+
+function outlookReady() {
+  try {
+    return outlookConnected();
+  } catch {
+    return false;
+  }
+}
+
 export async function sendEmail(mail: Mail) {
   const id = newId();
   // When the owner's Outlook is connected, emails go out from their own Outlook address.
-  if (outlookConnected()) {
-    db().prepare("insert into outbox (id, to_addr, reply_to, subject, body, status) values (?, ?, ?, ?, ?, 'sending')").run(id, mail.to, mail.replyTo ?? null, mail.subject, mail.text);
+  if (outlookReady()) {
+    outbox("insert into outbox (id, to_addr, reply_to, subject, body, status) values (?, ?, ?, ?, ?, 'sending')", id, mail.to, mail.replyTo ?? null, mail.subject, mail.text);
     try {
       await sendOutlookMail(mail);
-      db().prepare("update outbox set status = 'sent', provider_id = 'outlook' where id = ?").run(id);
+      outbox("update outbox set status = 'sent', provider_id = 'outlook' where id = ?", id);
       return { ok: true as const, sent: true };
     } catch (e) {
       const error = (e instanceof Error ? e.message : "Outlook error").slice(0, 300);
       console.error("[email] Outlook failed:", error);
-      db().prepare("update outbox set status = 'failed', error = ? where id = ?").run(error, id);
+      outbox("update outbox set status = 'failed', error = ? where id = ?", error, id);
       return { ok: false as const, sent: false, error };
     }
   }
-  db()
-    .prepare("insert into outbox (id, to_addr, reply_to, subject, body, status) values (?, ?, ?, ?, ?, ?)")
-    .run(id, mail.to, mail.replyTo ?? null, mail.subject, mail.text, process.env.RESEND_API_KEY ? "sending" : "saved");
+  outbox("insert into outbox (id, to_addr, reply_to, subject, body, status) values (?, ?, ?, ?, ?, ?)",
+    id, mail.to, mail.replyTo ?? null, mail.subject, mail.text, process.env.RESEND_API_KEY ? "sending" : "saved");
   if (!process.env.RESEND_API_KEY) {
-    console.info(`[email:outbox] to=${mail.to} subject=${JSON.stringify(mail.subject)}`);
+    console.error(`[email] RESEND_API_KEY is not set, so this email was NOT sent: to=${mail.to} subject=${JSON.stringify(mail.subject)}`);
     return { ok: true as const, sent: false };
   }
   const result = await sendViaResend(mail).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : "network error" }));
   if (result.ok) {
-    db().prepare("update outbox set status = 'sent', provider_id = ? where id = ?").run(result.id, id);
+    outbox("update outbox set status = 'sent', provider_id = ? where id = ?", result.id, id);
     return { ok: true as const, sent: true };
   }
   console.error("[email] Resend failed:", result.error);
-  db().prepare("update outbox set status = 'failed', error = ? where id = ?").run(result.error, id);
+  outbox("update outbox set status = 'failed', error = ? where id = ?", result.error, id);
   return { ok: false as const, sent: false, error: result.error };
 }
